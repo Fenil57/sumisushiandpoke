@@ -44,8 +44,8 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
             <BrandLogo
               stacked
               imageClassName="h-20 w-20 object-contain"
-              textClassName="text-4xl md:text-7xl font-serif font-bold tracking-[0.16em] text-[#f9f6f0] leading-tight"
-              subtextClassName="text-sm md:text-base tracking-[0.4em] uppercase text-[#c92a2a] mt-2"
+              textClassName="text-3xl md:text-5xl font-serif font-bold tracking-[0.16em] text-[#f9f6f0] leading-tight"
+              subtextClassName="text-xs md:text-sm tracking-[0.4em] uppercase text-[#c92a2a] mt-2"
             />
             <motion.div 
               className="absolute inset-0 bg-[#c92a2a] blur-2xl opacity-20"

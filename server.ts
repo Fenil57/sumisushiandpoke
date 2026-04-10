@@ -1071,7 +1071,12 @@ app.get('*', (req, res, next) => {
 
 initEmailTransporter();
 
-app.listen(PORT, () => {
-  console.log(`\nSumi Sushi API server running on http://localhost:${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health\n`);
-});
+// Only start the server if we are not in a Vercel/serverless environment
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`\nSumi Sushi API server running on http://localhost:${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/api/health\n`);
+  });
+}
+
+export default app;
