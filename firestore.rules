@@ -1,0 +1,43 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Menu items: anyone can read, only admins can write
+    match /menu_items/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Public site settings: anyone can read, only admins can write
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Orders: server-created after verified payment, only admins can read/update
+    match /orders/{orderId} {
+      allow create: if false;
+      allow read, update: if isAdmin();
+      allow delete: if false; // Never delete orders
+    }
+
+    // Pending payment sessions are backend-only
+    match /pending_checkouts/{checkoutId} {
+      allow read, write: if false;
+    }
+
+    // Users/staff: only admins can read/write
+    match /users/{userId} {
+      allow read: if isAdmin() || request.auth.uid == userId;
+      allow write: if isAdmin();
+    }
+
+    // Helper function: check if the current user is an admin
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}
