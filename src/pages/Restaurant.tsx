@@ -32,7 +32,7 @@ const staticAtmosphere: GalleryImage[] = [
   }
 ];
 
-export function Gallery() {
+export function Restaurant() {
   const { t } = useTranslation();
   const [images, setImages] = useState<GalleryImage[]>(staticAtmosphere);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,7 +65,7 @@ export function Gallery() {
 
         setImages(mixed);
       } catch (error) {
-        console.error("Failed to fetch gallery cuisine:", error);
+        console.error("Failed to fetch restaurant cuisine:", error);
       } finally {
         setIsLoading(false);
       }
@@ -85,14 +85,14 @@ export function Gallery() {
         >
           <div className="flex items-center justify-center gap-4 mb-6">
             <span className="w-8 h-[1px] bg-[var(--color-shu)]"></span>
-            <p className="text-xs tracking-[0.4em] uppercase font-medium text-[var(--color-shu)]">{t('gallery.tag')}</p>
+            <p className="text-xs tracking-[0.4em] uppercase font-medium text-[var(--color-shu)]">{t('restaurant.tag')}</p>
             <span className="w-8 h-[1px] bg-[var(--color-shu)]"></span>
           </div>
           <h1 className="text-4xl md:text-7xl font-serif font-bold text-[var(--color-washi)] mb-4">
-            {t('gallery.title')} <span className="italic font-light opacity-70">{t('gallery.titleItalic')}</span>
+            {t('restaurant.title')} <span className="italic font-light opacity-70">{t('restaurant.titleItalic')}</span>
           </h1>
           <p className="text-[var(--color-washi)]/60 max-w-2xl mx-auto text-lg">
-            {t('gallery.subtitle')}
+            {t('restaurant.subtitle')}
           </p>
         </motion.div>
 
@@ -119,7 +119,7 @@ export function Gallery() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-8 text-left">
                   <span className="text-[var(--color-shu)] text-xs tracking-widest uppercase mb-2 font-bold">
-                    {t(`gallery.cat${image.category}`)}
+                    {t(`restaurant.cat${image.category}`)}
                   </span>
                   <h3 className="text-[var(--color-washi)] text-2xl font-serif font-bold tracking-tight">
                     {image.title}
@@ -141,7 +141,7 @@ export function Gallery() {
         >
           <div className="inline-block p-12 border border-[var(--color-washi)]/10 rounded-[3rem]">
             <p className="text-[var(--color-washi)]/80 text-xl font-serif italic mb-8">
-              "{t('gallery.quote')}"
+              "{t('restaurant.quote')}"
             </p>
             <div className="bg-[var(--color-shu)] h-[1px] w-12 mx-auto"></div>
           </div>
@@ -150,4 +150,3 @@ export function Gallery() {
     </div>
   );
 }
-

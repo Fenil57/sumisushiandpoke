@@ -184,10 +184,10 @@ const resources = {
         saving: "Saving...",
         saveSettings: "Save Settings"
       },
-      gallery: {
-        tag: "Gallery",
-        title: "A Glimpse of",
-        titleItalic: "Umami",
+      restaurant: {
+        tag: "Restaurant",
+        title: "Sumi Sushi",
+        titleItalic: "& Poke",
         subtitle: "Experience the visual journey of our restaurant, from the handcrafted dishes to our authentic surroundings.",
         quote: "We eat first with our eyes.",
         catAtmosphere: "Atmosphere",
@@ -378,10 +378,10 @@ const resources = {
         saving: "Tallennetaan...",
         saveSettings: "Tallenna Asetukset"
       },
-      gallery: {
-        tag: "Galleria",
-        title: "Palanen",
-        titleItalic: "Umamia",
+      restaurant: {
+        tag: "Ravintola",
+        title: "Sumi Sushi",
+        titleItalic: "& Poke",
         subtitle: "Koe ravintolamme visuaalinen matka käsityönä valmistetuista annoksista aitoon tunnelmaamme.",
         quote: "Syömme ensin silmillämme.",
         catAtmosphere: "Tunnelma",

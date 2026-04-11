@@ -13,7 +13,8 @@ export function Navbar() {
   const { t, i18n } = useTranslation();
   const langMenuRef = useRef<HTMLDivElement>(null);
   const isOrderPage = location.pathname === '/order';
-  const useWhiteText = location.pathname === '/gallery' && !isScrolled;
+  const isDarkPage = location.pathname === '/' || location.pathname === '/restaurant';
+  const useWhiteText = isDarkPage && !isScrolled;
   
   const textColorClass = useWhiteText ? 'text-[var(--color-washi)]' : 'text-[var(--color-sumi)]';
   const hoverTextColorClass = 'hover:text-[var(--color-shu)]';
@@ -71,7 +72,7 @@ export function Navbar() {
               <>
                 <a href="#menu" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('nav.menu')}</a>
                 <a href="#delivery" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('nav.delivery')}</a>
-                <Link to="/gallery" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>Gallery</Link>
+                <Link to="/restaurant" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('restaurant.tag')}</Link>
               </>
             )}
             <div className="relative" ref={langMenuRef}>
@@ -212,7 +213,7 @@ export function Navbar() {
                 <>
                   <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Home {t('nav.menu')}</a>
                   <a href="#delivery" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">{t('nav.delivery')}</a>
-                  <Link to="/gallery" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Gallery</Link>
+                  <Link to="/restaurant" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">{t('restaurant.tag')}</Link>
                   <Link to="/order" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Full {t('nav.menu')}</Link>
                 </>
               ) : (
