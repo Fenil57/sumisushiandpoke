@@ -183,6 +183,16 @@ const resources = {
         saved: "Saved!",
         saving: "Saving...",
         saveSettings: "Save Settings"
+      },
+      gallery: {
+        tag: "Gallery",
+        title: "A Glimpse of",
+        titleItalic: "Umami",
+        subtitle: "Experience the visual journey of our restaurant, from the handcrafted dishes to our authentic surroundings.",
+        quote: "We eat first with our eyes.",
+        catAtmosphere: "Atmosphere",
+        catCuisine: "Cuisine",
+        catPeople: "People"
       }
     }
   },
@@ -367,6 +377,16 @@ const resources = {
         saved: "Tallennettu!",
         saving: "Tallennetaan...",
         saveSettings: "Tallenna Asetukset"
+      },
+      gallery: {
+        tag: "Galleria",
+        title: "Palanen",
+        titleItalic: "Umamia",
+        subtitle: "Koe ravintolamme visuaalinen matka käsityönä valmistetuista annoksista aitoon tunnelmaamme.",
+        quote: "Syömme ensin silmillämme.",
+        catAtmosphere: "Tunnelma",
+        catCuisine: "Keittiö",
+        catPeople: "Henkilökunta"
       }
     }
   }

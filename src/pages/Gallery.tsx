@@ -85,14 +85,14 @@ export function Gallery() {
         >
           <div className="flex items-center justify-center gap-4 mb-6">
             <span className="w-8 h-[1px] bg-[var(--color-shu)]"></span>
-            <p className="text-xs tracking-[0.4em] uppercase font-medium text-[var(--color-shu)]">Gallery</p>
+            <p className="text-xs tracking-[0.4em] uppercase font-medium text-[var(--color-shu)]">{t('gallery.tag')}</p>
             <span className="w-8 h-[1px] bg-[var(--color-shu)]"></span>
           </div>
           <h1 className="text-4xl md:text-7xl font-serif font-bold text-[var(--color-washi)] mb-4">
-            A Glimpse of <span className="italic font-light opacity-70">Umami</span>
+            {t('gallery.title')} <span className="italic font-light opacity-70">{t('gallery.titleItalic')}</span>
           </h1>
           <p className="text-[var(--color-washi)]/60 max-w-2xl mx-auto text-lg">
-            Experience the visual journey of our restaurant, from the handcrafted dishes to our authentic surroundings.
+            {t('gallery.subtitle')}
           </p>
         </motion.div>
 
@@ -119,7 +119,7 @@ export function Gallery() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-8 text-left">
                   <span className="text-[var(--color-shu)] text-xs tracking-widest uppercase mb-2 font-bold">
-                    {image.category}
+                    {t(`gallery.cat${image.category}`)}
                   </span>
                   <h3 className="text-[var(--color-washi)] text-2xl font-serif font-bold tracking-tight">
                     {image.title}
@@ -141,7 +141,7 @@ export function Gallery() {
         >
           <div className="inline-block p-12 border border-[var(--color-washi)]/10 rounded-[3rem]">
             <p className="text-[var(--color-washi)]/80 text-xl font-serif italic mb-8">
-              "We eat first with our eyes."
+              "{t('gallery.quote')}"
             </p>
             <div className="bg-[var(--color-shu)] h-[1px] w-12 mx-auto"></div>
           </div>
