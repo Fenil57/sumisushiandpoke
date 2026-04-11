@@ -8,7 +8,7 @@ export function Home() {
   return (
     <>
       <RamenHero />
-      <ChefSection />
+      {/* <ChefSection /> */}
       <MenuScroll />
       <Testimonials />
       <DeliveryWorkflow />

@@ -12,6 +12,7 @@ import { Home } from './pages/Home';
 import { OrderOnline } from './pages/OrderOnline';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { Gallery } from './pages/Gallery';
 import { Footer } from './components/Footer';
 import { PageTransition } from './components/PageTransition';
 import { CustomCursor } from './components/CustomCursor';
@@ -26,6 +27,7 @@ function AnimatedRoutes() {
         <Routes location={location}>
           <Route path="/" element={<PageTransition><Home /></PageTransition>} />
           <Route path="/order" element={<PageTransition><OrderOnline /></PageTransition>} />
+          <Route path="/gallery" element={<PageTransition><Gallery /></PageTransition>} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={
             <ProtectedRoute>
