@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   updateSettings,
   SiteSettings,
   getSettings,
   DEFAULT_SETTINGS,
-} from '../services/settingsService';
-import { Save, Loader2, CheckCircle2 } from 'lucide-react';
-import { useSettings } from '../context/SettingsContext';
+} from "../services/settingsService";
+import { Save, Loader2, CheckCircle2 } from "lucide-react";
+import { useSettings } from "../context/SettingsContext";
 
 const numberFields = new Set([
-  'deliveryFee',
-  'weekdayBuffetPrice',
-  'saturdayBuffetPrice',
-  'sundayBuffetPrice',
+  "deliveryFee",
+  "weekdayBuffetPrice",
+  "saturdayBuffetPrice",
+  "sundayBuffetPrice",
 ]);
 
 export function AdminSettings() {
@@ -55,7 +55,7 @@ export function AdminSettings() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
-      console.error('Failed to update settings:', error);
+      console.error("Failed to update settings:", error);
     } finally {
       setIsSaving(false);
     }
@@ -70,16 +70,16 @@ export function AdminSettings() {
   }
 
   return (
-    <div className="bg-[var(--color-sumi)]/40 rounded-xl border border-[var(--color-washi)]/10 p-6 md:p-8">
+    <div className="max-w-7xl mx-auto px-4 md:px-8">
       <h2 className="text-2xl font-serif font-bold text-[var(--color-washi)] mb-6">
-        {t('admin.generalSettings')}
+        {t("admin.generalSettings")}
       </h2>
 
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-[var(--color-washi)]/60">
-              {t('admin.restaurantName')}
+              {t("admin.restaurantName")}
             </label>
             <input
               type="text"
@@ -93,7 +93,7 @@ export function AdminSettings() {
 
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-[var(--color-washi)]/60">
-              {t('admin.kanjiText')}
+              {t("admin.kanjiText")}
             </label>
             <input
               type="text"
@@ -108,7 +108,7 @@ export function AdminSettings() {
 
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-widest text-[var(--color-washi)]/60">
-            {t('admin.subtitleText')}
+            {t("admin.subtitleText")}
           </label>
           <textarea
             name="subtitle"
@@ -121,7 +121,7 @@ export function AdminSettings() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[var(--color-washi)]/10">
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-[var(--color-washi)]/60">
-              {t('admin.contactEmail')}
+              {t("admin.contactEmail")}
             </label>
             <input
               type="email"
@@ -134,7 +134,7 @@ export function AdminSettings() {
 
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-[var(--color-washi)]/60">
-              {t('admin.contactPhone')}
+              {t("admin.contactPhone")}
             </label>
             <input
               type="tel"
@@ -148,7 +148,7 @@ export function AdminSettings() {
 
         <div className="space-y-2 pt-4 border-t border-[var(--color-washi)]/10">
           <label className="text-xs font-bold uppercase tracking-widest text-[var(--color-washi)]/60">
-            {t('admin.physicalAddress')}
+            {t("admin.physicalAddress")}
           </label>
           <textarea
             name="address"
@@ -183,7 +183,8 @@ export function AdminSettings() {
               className="w-full bg-[var(--color-washi)]/5 border border-[var(--color-washi)]/10 focus:ring-0 focus:border-[var(--color-shu)] rounded-sm p-3 text-sm text-[var(--color-washi)]"
             />
             <p className="text-xs text-[var(--color-washi)]/40">
-              Pickup stays free. Delivery only adds this fee when the order subtotal is above EUR 20.
+              Pickup stays free. Delivery only adds this fee when the order
+              subtotal is above EUR 20.
             </p>
           </div>
 
@@ -403,7 +404,7 @@ export function AdminSettings() {
         <div className="pt-6 flex items-center justify-end gap-4">
           {success && (
             <span className="text-green-400 flex items-center gap-1.5 text-sm font-medium">
-              <CheckCircle2 size={16} /> {t('admin.saved')}
+              <CheckCircle2 size={16} /> {t("admin.saved")}
             </span>
           )}
           <button
@@ -416,7 +417,7 @@ export function AdminSettings() {
             ) : (
               <Save size={16} />
             )}
-            {isSaving ? t('admin.saving') : t('admin.saveSettings')}
+            {isSaving ? t("admin.saving") : t("admin.saveSettings")}
           </button>
         </div>
       </form>

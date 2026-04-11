@@ -155,6 +155,14 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  to="/restaurant"
+                  className="hover:text-[var(--color-shu)] transition-colors cursor-pointer"
+                >
+                  {t("restaurant.tag")}
+                </Link>
+              </li>
+              <li>
+                <Link
                   to="/order"
                   className="hover:text-[var(--color-shu)] transition-colors cursor-pointer"
                 >

@@ -13,7 +13,7 @@ export function Navbar() {
   const { t, i18n } = useTranslation();
   const langMenuRef = useRef<HTMLDivElement>(null);
   const isOrderPage = location.pathname === '/order';
-  const isDarkPage = location.pathname === '/' || location.pathname === '/restaurant';
+  const isDarkPage = location.pathname === '/restaurant';
   const useWhiteText = isDarkPage && !isScrolled;
   
   const textColorClass = useWhiteText ? 'text-[var(--color-washi)]' : 'text-[var(--color-sumi)]';
