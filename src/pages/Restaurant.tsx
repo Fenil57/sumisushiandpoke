@@ -1,40 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { getMenuItems, type MenuItem } from '../services/menuService';
+import KineticScrollGallery from '../components/ui/kinetic-scroll-gallery';
 
-interface GalleryImage {
-  url: string;
-  title: string;
-  category: string;
-}
-
-const staticAtmosphere: GalleryImage[] = [
-  {
-    url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=1200",
-    title: "Restaurant Interior",
-    category: "Atmosphere"
-  },
-  {
-    url: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=1200",
-    title: "Cozy Dining",
-    category: "Atmosphere"
-  },
-  {
-    url: "https://images.unsplash.com/photo-1617196034183-421b4917c92d?auto=format&fit=crop&q=80&w=1200",
-    title: "Traditional Setup",
-    category: "Atmosphere"
-  },
-  {
-    url: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&q=80&w=1200",
-    title: "Chef's Craft",
-    category: "People"
-  }
-];
+// Import local restaurant images
+import rest1 from '../assets/images/restaurant/rest-1.jpeg';
+import rest2 from '../assets/images/restaurant/rest-2.jpeg';
+import rest3 from '../assets/images/restaurant/rest-3.jpeg';
+import rest4 from '../assets/images/restaurant/rest-4.jpeg';
+import rest5 from '../assets/images/restaurant/rest-5.jpeg';
+import rest6 from '../assets/images/restaurant/rest-6.jpeg';
+import rest7 from '../assets/images/restaurant/rest-7.jpeg';
 
 export function Restaurant() {
   const { t } = useTranslation();
-  const [images] = useState<GalleryImage[]>(staticAtmosphere);
+  
+  // Array of local restaurant images
+  const restaurantImages = [
+    rest1, rest2, rest3, rest4, rest5, rest6, rest7
+  ];
 
   return (
     <div className="min-h-screen bg-[var(--color-sumi)] pt-32 pb-24 px-4 md:px-6">
@@ -58,37 +42,8 @@ export function Restaurant() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 text-white">
-          {images.map((image, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: (idx % 3) * 0.1 }}
-              className="group relative aspect-[4/5] overflow-hidden rounded-2xl bg-[#1a1a1a]"
-            >
-              <img
-                src={image.url}
-                alt={image.title}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-8 text-left">
-                <span className="text-[var(--color-shu)] text-xs tracking-widest uppercase mb-2 font-bold">
-                  {t(`restaurant.cat${image.category}`)}
-                </span>
-                <h3 className="text-[var(--color-washi)] text-2xl font-serif font-bold tracking-tight">
-                  {image.title}
-                </h3>
-              </div>
-              <div className="absolute top-4 right-4 w-10 h-10 border border-[var(--color-washi)]/30 rounded-full flex items-center justify-center text-[var(--color-washi)]/50 opacity-0 group-hover:opacity-100 transition-all duration-500 scale-90 group-hover:scale-100">
-                <span className="text-xs font-light">{(idx + 1).toString().padStart(2, '0')}</span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
+        {/* Smooth Kinetic Scroll Gallery with local images */}
+        <KineticScrollGallery images={restaurantImages} />
 
         <motion.div
           initial={{ opacity: 0 }}
