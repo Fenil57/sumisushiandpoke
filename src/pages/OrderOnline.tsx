@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Plus,
   Minus,
   AlertCircle,
+  Check,
   User,
   Phone,
   Mail,
@@ -12,7 +14,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getMenuItems, type MenuItem } from "../services/menuService";
-import { useSettings } from "../context/SettingsContext";
+import { useSettings } from "../hooks/useSettings";
 import { getApiUrl, readApiJson } from "../lib/api";
 
 const RamenBowlIcon = ({
@@ -45,11 +47,44 @@ const DEFAULT_DELIVERY_FEE = 3;
 const FREE_DELIVERY_RADIUS_METERS = 5000;
 const CHECKOUT_STORAGE_KEY = "sumi-flatpay-checkout";
 
+// Regex for Finnish address validation
+// Updated: Made comma optional to support "Street 3 12345 City" format
+const FINNISH_ADDRESS_REGEX =
+  /^[a-zA-ZäöåÄÖÅ\s\-'.]+?\s+\d+[a-zA-Z]?(?:\s*[,\-]\s*(?:A|B|C|D|E|F|G|H|J|K|L|M|N|O|P|R|S|T|U|V|W|X|Y|Z|Ä|Ö)\d*)?[,\s\\n]+\s*\d{4,5}\s+[a-zA-ZäöåÄÖÅ\s\-'.]+(?:[,\\n]+\s*Finland)?$/i;
+
+/**
+ * Validates if an address matches Finnish address format
+ */
+function isValidFinnishAddress(address: string): boolean {
+  if (address.length < 10) {
+    return false;
+  }
+
+  // Must contain a postal code (4-5 digits)
+  if (!/\b\d{4,5}\b/.test(address)) {
+    return false;
+  }
+
+  // Must contain at least one letter (street name)
+  if (!/[a-zA-ZäöåÄÖÅ]/.test(address)) {
+    return false;
+  }
+
+  // Must contain at least one number (street number)
+  if (!/\d/.test(address)) {
+    return false;
+  }
+
+  // Check against the regex pattern
+  return FINNISH_ADDRESS_REGEX.test(address.trim());
+}
+
 interface DeliveryQuote {
   address: string;
   matchedCustomerAddress: string;
   distanceMeters: number;
   withinFreeDeliveryRadius: boolean;
+  isFallback?: boolean;
 }
 
 interface StoredCheckoutState {
@@ -67,10 +102,17 @@ interface DeliveryValidationResponse {
   distanceMeters: number;
   withinFreeDeliveryRadius: boolean;
   matchedCustomerAddress?: string;
+  isFallback?: boolean;
 }
 
 interface FlatpayVerifyResponse {
-  outcome: "paid" | "pending" | "cancelled" | "failed" | "missing_checkout" | "missing_payment";
+  outcome:
+    | "paid"
+    | "pending"
+    | "cancelled"
+    | "failed"
+    | "missing_checkout"
+    | "missing_payment";
   orderId?: string;
 }
 
@@ -118,8 +160,7 @@ const FALLBACK_MENU: MenuItem[] = [
     id: "21-dragon-maki",
     category: "Sushi",
     name: "Dragon Maki",
-    description:
-      "Surimi, cucumber, avocado, salmon, tuna. Large roll - 8 pcs.",
+    description: "Surimi, cucumber, avocado, salmon, tuna. Large roll - 8 pcs.",
     price: 11.9,
     image_url:
       "https://images.unsplash.com/photo-1617196034183-421b4917c92d?auto=format&fit=crop&w=800&q=80",
@@ -177,7 +218,10 @@ const FALLBACK_MENU: MenuItem[] = [
 
 export function OrderOnline() {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { settings } = useSettings();
+  const hasAddedFromUrl = useRef(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   const [menuError, setMenuError] = useState<string | null>(null);
@@ -193,13 +237,18 @@ export function OrderOnline() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [orderType, setOrderType] = useState<"delivery" | "pickup">("delivery");
-  const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
-  const [deliveryAddressError, setDeliveryAddressError] = useState<string | null>(null);
+  const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(
+    null,
+  );
+  const [deliveryAddressError, setDeliveryAddressError] = useState<
+    string | null
+  >(null);
   const [isCheckingDelivery, setIsCheckingDelivery] = useState(false);
 
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [isVerifyingPaymentReturn, setIsVerifyingPaymentReturn] = useState(false);
+  const [isVerifyingPaymentReturn, setIsVerifyingPaymentReturn] =
+    useState(false);
   const [hasRestoredCheckout, setHasRestoredCheckout] = useState(false);
 
   const deliveryFeeSetting =
@@ -237,6 +286,31 @@ export function OrderOnline() {
     }
     loadMenu();
   }, []);
+
+  // Handle adding item from URL query parameter
+  useEffect(() => {
+    if (isLoadingMenu || menuItems.length === 0 || hasAddedFromUrl.current)
+      return;
+
+    const params = new URLSearchParams(location.search);
+    const itemId = params.get("addItem");
+
+    if (itemId) {
+      const itemToAdd = menuItems.find((item) => item.id === itemId);
+      if (itemToAdd) {
+        addToCart(itemToAdd);
+        hasAddedFromUrl.current = true;
+
+        // Clean the URL without reloading the page
+        const newParams = new URLSearchParams(location.search);
+        newParams.delete("addItem");
+        const newSearch = newParams.toString();
+        navigate(location.pathname + (newSearch ? `?${newSearch}` : ""), {
+          replace: true,
+        });
+      }
+    }
+  }, [isLoadingMenu, menuItems, location.search, navigate, location.pathname]);
 
   useEffect(() => {
     try {
@@ -290,7 +364,10 @@ export function OrderOnline() {
       deliveryQuote,
     };
 
-    window.sessionStorage.setItem(CHECKOUT_STORAGE_KEY, JSON.stringify(snapshot));
+    window.sessionStorage.setItem(
+      CHECKOUT_STORAGE_KEY,
+      JSON.stringify(snapshot),
+    );
   }, [
     cart,
     checkoutStep,
@@ -318,10 +395,11 @@ export function OrderOnline() {
   );
   const isWithinFreeDeliveryRadius =
     hasValidatedDeliveryQuote && deliveryQuote.withinFreeDeliveryRadius;
+  // Free delivery: within 5km radius AND order > €20
+  // Charged delivery: outside 5km radius OR order ≤ €20
   const isDeliveryFeeApplied =
     orderType === "delivery" &&
-    !isWithinFreeDeliveryRadius &&
-    total > DELIVERY_FEE_THRESHOLD;
+    (!isWithinFreeDeliveryRadius || total <= DELIVERY_FEE_THRESHOLD);
   const deliveryFee = isDeliveryFeeApplied ? deliveryFeeSetting : 0;
   const grandTotal = total + deliveryFee;
 
@@ -407,13 +485,19 @@ export function OrderOnline() {
       setPaymentError(null);
 
       const clearReturnParams = () => {
-        window.history.replaceState({}, document.title, window.location.pathname);
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname,
+        );
       };
 
       try {
         if (invoiceHandle) {
           const response = await fetch(
-            getApiUrl(`/api/flatpay/verify?invoice=${encodeURIComponent(invoiceHandle)}`),
+            getApiUrl(
+              `/api/flatpay/verify?invoice=${encodeURIComponent(invoiceHandle)}`,
+            ),
           );
           const data = await readApiJson<FlatpayVerifyResponse>(
             response,
@@ -469,7 +553,11 @@ export function OrderOnline() {
       } finally {
         if (isActive) {
           setIsVerifyingPaymentReturn(false);
-          window.history.replaceState({}, document.title, window.location.pathname);
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname,
+          );
         }
       }
     }
@@ -491,6 +579,14 @@ export function OrderOnline() {
       return null;
     }
 
+    // Validate address format before making API call
+    if (!isValidFinnishAddress(normalizedDeliveryAddress)) {
+      setDeliveryAddressError(
+        "Invalid address format. Please provide a valid Finnish address (e.g., Streetname 123, 12345 City, Finland).",
+      );
+      return null;
+    }
+
     if (hasValidatedDeliveryQuote && deliveryQuote) {
       return deliveryQuote;
     }
@@ -499,14 +595,17 @@ export function OrderOnline() {
     setDeliveryAddressError(null);
 
     try {
-      const response = await fetch(getApiUrl("/api/validate-delivery-address"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerAddress: normalizedDeliveryAddress,
-          restaurantAddress: settings.address,
-        }),
-      });
+      const response = await fetch(
+        getApiUrl("/api/validate-delivery-address"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customerAddress: normalizedDeliveryAddress,
+            restaurantAddress: settings.address,
+          }),
+        },
+      );
       const data = await readApiJson<DeliveryValidationResponse>(
         response,
         "We could not validate that delivery address.",
@@ -518,14 +617,14 @@ export function OrderOnline() {
           data.matchedCustomerAddress || normalizedDeliveryAddress,
         distanceMeters: data.distanceMeters,
         withinFreeDeliveryRadius: Boolean(data.withinFreeDeliveryRadius),
+        isFallback: data.isFallback,
       };
 
       setDeliveryQuote(quote);
       return quote;
     } catch (err: any) {
       const message =
-        err.message ||
-        t("checkout.deliveryAddressValidationError");
+        err.message || t("checkout.deliveryAddressValidationError");
       setDeliveryAddressError(message);
       return null;
     } finally {
@@ -574,9 +673,7 @@ export function OrderOnline() {
 
       window.location.assign(data.checkoutUrl);
     } catch (err: any) {
-      setPaymentError(
-        err.message || t("checkout.paymentInitializationFailed"),
-      );
+      setPaymentError(err.message || t("checkout.paymentInitializationFailed"));
     } finally {
       setIsCreatingPayment(false);
     }
@@ -1037,20 +1134,34 @@ export function OrderOnline() {
                       <div className="flex justify-between text-sm text-[var(--color-washi)]/70">
                         <span>{t("order.deliveryFee")}</span>
                         <span>
-                          {orderType === "pickup"
+                          {orderType === "pickup" || !isDeliveryFeeApplied
                             ? t("order.free")
-                            : isWithinFreeDeliveryRadius
-                              ? t("order.free")
-                            : isDeliveryFeeApplied
-                              ? `€${deliveryFeeSetting.toFixed(2)}`
-                              : t("order.free")}
+                            : `€${deliveryFeeSetting.toFixed(2)}`}
                         </span>
                       </div>
                       {orderType === "delivery" && (
-                        <div className="text-[10px] text-[var(--color-washi)]/40 -mt-2">
-                          Delivery is free within 5 km after address validation. Outside 5 km, orders over €{DELIVERY_FEE_THRESHOLD.toFixed(2)} add a delivery charge of €{deliveryFeeSetting.toFixed(2)}.
+                        <div className="text-[10px] text-[var(--color-washi)]/50 -mt-2 leading-relaxed">
+                          <span className="text-[var(--color-shu)] font-medium">
+                            Free delivery
+                          </span>{" "}
+                          within 5 km for orders over €
+                          {DELIVERY_FEE_THRESHOLD.toFixed(2)}. Orders below €
+                          {DELIVERY_FEE_THRESHOLD.toFixed(2)} or outside 5 km
+                          incur a €{deliveryFeeSetting.toFixed(2)} charge.
                         </div>
                       )}
+
+                      {deliveryQuote?.isFallback && (
+                        <div className="flex items-start gap-2 p-3 bg-[var(--color-shu)]/10 border border-[var(--color-shu)]/20 rounded-lg">
+                          <AlertCircle className="w-4 h-4 text-[var(--color-shu)] shrink-0 mt-0.5" />
+                          <p className="text-[10px] text-[var(--color-washi)]/70 italic leading-relaxed">
+                            Unable to precisely verify distance. Standard
+                            delivery fee of €{deliveryFeeSetting.toFixed(2)} has
+                            been applied to ensure your order can proceed.
+                          </p>
+                        </div>
+                      )}
+
                       <div className="flex justify-between font-serif font-bold text-2xl text-[var(--color-washi)] pt-4 border-t border-[var(--color-washi)]/10">
                         <span>{t("order.total")}</span>
                         <span>€{grandTotal.toFixed(2)}</span>
@@ -1094,7 +1205,7 @@ export function OrderOnline() {
                         onChange={(e) => setCustomerName(e.target.value)}
                         required
                         placeholder={t("checkout.namePlaceholder")}
-                        className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-shu)]/40 text-[var(--color-washi)] px-4 py-3 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors"
+                        className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/20 text-[var(--color-washi)] px-4 py-3 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors"
                       />
                     </div>
                   </div>
@@ -1113,7 +1224,7 @@ export function OrderOnline() {
                         onChange={(e) => setCustomerPhone(e.target.value)}
                         required
                         placeholder="+358 44 123 4567"
-                        className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-shu)]/40 text-[var(--color-washi)] px-4 py-3 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors"
+                        className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/20 text-[var(--color-washi)] px-4 py-3 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors"
                       />
                     </div>
                   </div>
@@ -1131,96 +1242,86 @@ export function OrderOnline() {
                         value={customerEmail}
                         onChange={(e) => setCustomerEmail(e.target.value)}
                         placeholder={t("checkout.emailPlaceholder")}
-                        className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-shu)]/40 text-[var(--color-washi)] px-4 py-3 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors"
+                        className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/20 text-[var(--color-washi)] px-4 py-3 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors"
                       />
                     </div>
                   </div>
                   {orderType === "delivery" && (
-                    <div>
-                      <label className="block text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/50 mb-2">
-                        {t("checkout.deliveryAddress")} *
-                      </label>
+                    <div className="space-y-3">
+                      <div className="flex items-end justify-between">
+                        <label className="block text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/50">
+                          {t("checkout.deliveryAddress")} *
+                        </label>
+                        <button
+                          type="button"
+                          onClick={validateDeliveryAddress}
+                          disabled={
+                            isCheckingDelivery || !normalizedDeliveryAddress
+                          }
+                          className="text-[10px] tracking-[0.15em] uppercase font-bold text-[var(--color-shu)] hover:text-[#a02020] transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer mb-0.5"
+                        >
+                          {isCheckingDelivery
+                            ? t("checkout.checkingAddress")
+                            : hasValidatedDeliveryQuote
+                              ? t("checkout.checkAddress") // Allow re-checking if they change it
+                              : t("checkout.checkAddress")}
+                        </button>
+                      </div>
                       <textarea
                         value={deliveryAddress}
                         onChange={(e) => setDeliveryAddress(e.target.value)}
                         required={orderType === "delivery"}
                         placeholder={t("checkout.deliveryAddressPlaceholder")}
-                        className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-shu)]/40 text-[var(--color-washi)] px-4 py-3 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors resize-none h-24"
+                        className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/20 text-[var(--color-washi)] px-4 py-3 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors resize-none h-24"
                       />
-                    </div>
-                  )}
-                </div>
 
-                {orderType === "delivery" && (
-                  <div className="mb-6">
-                    <div className="flex flex-col gap-3 rounded-sm border border-[var(--color-washi)]/10 bg-[var(--color-washi)]/[0.03] p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-washi)]/50">
-                            {t("checkout.deliveryCheckTitle")}
-                          </p>
-                          <p className="text-sm text-[var(--color-washi)]/75 mt-1">
-                            {t("checkout.deliveryCheckDesc")}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={validateDeliveryAddress}
-                          disabled={isCheckingDelivery || !normalizedDeliveryAddress}
-                          className="px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold border border-[var(--color-shu)]/40 text-[var(--color-washi)] hover:bg-[var(--color-shu)]/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        >
-                          {isCheckingDelivery
-                            ? t("checkout.checkingAddress")
-                            : t("checkout.checkAddress")}
-                        </button>
-                      </div>
-
+                      {/* Simplified status feedback */}
                       {deliveryAddressError && (
-                        <div className="flex items-start gap-2 text-xs text-red-300 bg-red-500/10 border border-red-500/20 px-3 py-2">
-                          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                        <div className="flex items-center gap-2 text-[10px] text-red-400">
+                          <AlertCircle size={12} />
                           <span>{deliveryAddressError}</span>
                         </div>
                       )}
 
-                      {hasValidatedDeliveryQuote && deliveryQuote && (
-                        <div className="text-xs text-[var(--color-washi)]/75 space-y-1">
-                          <p>{t("checkout.matchedAddress")}: {deliveryQuote.matchedCustomerAddress}</p>
-                          <p>{t("checkout.deliveryDistance")}: {(deliveryQuote.distanceMeters / 1000).toFixed(2)} km</p>
-                          <p>
-                            {deliveryQuote.withinFreeDeliveryRadius
-                              ? t("checkout.freeDeliveryWithinRadius", {
-                                  km: (FREE_DELIVERY_RADIUS_METERS / 1000).toFixed(0),
-                                })
-                              : t("checkout.standardDeliveryApplies")}
-                          </p>
-                        </div>
-                      )}
+                      {hasValidatedDeliveryQuote &&
+                        deliveryQuote &&
+                        !deliveryAddressError && (
+                          <div className="flex items-center gap-2">
+                            <Check
+                              size={14}
+                              className="shrink-0 text-[var(--color-washi)]"
+                            />
+                            <span className="text-[10px] tracking-wide font-medium text-[var(--color-washi)]/80">
+                              {!isDeliveryFeeApplied
+                                ? "Free delivery"
+                                : "Standard delivery pricing applies"}
+                            </span>
+                          </div>
+                        )}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Order summary mini */}
-                <div className="border-t border-[var(--color-shu)]/40 pt-4 mb-4">
-                  <div className="flex justify-between text-sm text-[var(--color-washi)]/50 mb-1">
+                <div className="border-t border-[var(--color-washi)]/20 pt-4 space-y-2 mb-4">
+                  <div className="flex justify-between text-sm text-[var(--color-washi)]/50">
+                    <span>{t("order.subtotal")}</span>
+                    <span>€{total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-[var(--color-washi)]/50">
+                    <span>{t("order.deliveryFee")}</span>
                     <span>
-                      {cart.reduce((s, c) => s + c.quantity, 0)}{" "}
-                      {t("checkout.items")}
-                    </span>
-                    <span>
-                      {orderType === "delivery"
-                        ? "🛵 " + t("order.delivery")
-                        : "🏪 " + t("order.pickup")}
+                      {orderType === "pickup" ||
+                      isWithinFreeDeliveryRadius ||
+                      !isDeliveryFeeApplied
+                        ? t("order.free")
+                        : `€${deliveryFeeSetting.toFixed(2)}`}
                     </span>
                   </div>
-                  <div className="flex justify-between font-serif font-bold text-xl text-[var(--color-washi)]">
+                  <div className="flex justify-between font-serif font-bold text-xl text-[var(--color-washi)] pt-2 border-t border-[var(--color-washi)]/10">
                     <span>{t("order.total")}</span>
                     <span>€{grandTotal.toFixed(2)}</span>
                   </div>
-                  {orderType === "delivery" && hasValidatedDeliveryQuote && deliveryQuote && (
-                    <p className="text-[10px] text-[var(--color-washi)]/40 mt-2">
-                      {t("checkout.deliveryDistance")}: {(deliveryQuote.distanceMeters / 1000).toFixed(2)} km
-                    </p>
-                  )}
                 </div>
 
                 {paymentError && (
@@ -1244,7 +1345,8 @@ export function OrderOnline() {
                     disabled={
                       !customerName.trim() ||
                       !customerPhone.trim() ||
-                      (orderType === "delivery" && !normalizedDeliveryAddress) ||
+                      (orderType === "delivery" &&
+                        !normalizedDeliveryAddress) ||
                       isCreatingPayment
                     }
                     whileHover={{ scale: 1.02 }}
@@ -1280,7 +1382,6 @@ export function OrderOnline() {
                 </div>
               </motion.div>
             )}
-
           </div>
         </motion.div>
       </motion.div>

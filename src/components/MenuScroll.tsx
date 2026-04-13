@@ -180,7 +180,7 @@ export function MenuScroll() {
                             EUR {item.price.toFixed(2)}
                           </span>
                           <Link
-                            to="/order"
+                            to={`/order?addItem=${item.id}`}
                             className="text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium text-[#f9f6f0] hover:text-[#c92a2a] transition-colors flex items-center gap-2 cursor-pointer"
                           >
                             <span className="w-4 md:w-8 h-[1px] bg-current"></span>{" "}

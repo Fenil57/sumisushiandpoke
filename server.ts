@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import nodemailer from 'nodemailer';
+import rateLimit from 'express-rate-limit';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb, isFirebaseAdminConfigured } from './server/firebaseAdmin.js';
 
@@ -28,6 +29,45 @@ const FLATPAY_CHECKOUT_API_BASE_URL = 'https://checkout-api.frisbii.com/v1';
 const FLATPAY_API_BASE_URL = 'https://api.frisbii.com/v1';
 const FLATPAY_FALLBACK_CHECKOUT_URL = 'https://checkout.reepay.com/#/session/';
 const SUCCESSFUL_CHARGE_STATES = new Set(['authorized', 'settled']);
+
+// ============================================================================
+// RATE LIMITING - Protect against abuse and API cost explosion
+// ============================================================================
+
+// General API rate limiter: 100 requests per 15 minutes per IP
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { error: 'Too many requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Geocoding endpoint: stricter limit (Nominatim allows 1 req/sec)
+// 20 requests per minute per IP
+const geocodingLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20,
+  message: { 
+    error: 'Too many address validation requests. Please wait a moment and try again.',
+    retryAfter: '60 seconds'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Checkout session creation: very strict (prevents cost abuse)
+// 5 sessions per 15 minutes per IP
+const checkoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  message: { 
+    error: 'Too many checkout attempts. Please wait before trying again.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 type OrderType = 'delivery' | 'pickup';
 type PendingCheckoutStatus =
@@ -133,8 +173,6 @@ interface CheckoutSyncResult {
   paymentState?: string;
 }
 
-const nlsApiKey = process.env.NLS_API_KEY;
-
 function isAllowedOrigin(origin: string): boolean {
   try {
     const parsed = new URL(origin);
@@ -170,6 +208,9 @@ app.use(
     },
   }),
 );
+
+// Apply general rate limiter to all API routes
+app.use('/api/', apiLimiter);
 
 function requireAdminDb() {
   const db = getAdminDb();
@@ -239,8 +280,17 @@ function splitCustomerName(name: string) {
   };
 }
 
-function sanitizeString(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
+function sanitizeString(value: unknown, maxLength = 500): string {
+  if (typeof value !== 'string') return '';
+  
+  const trimmed = value.trim();
+  
+  // Prevent excessively long inputs (DoS protection)
+  if (trimmed.length > maxLength) {
+    return trimmed.substring(0, maxLength);
+  }
+  
+  return trimmed;
 }
 
 function toCents(amount: number): number {
@@ -272,6 +322,90 @@ function secureCompare(left: string, right: string): boolean {
   return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+// Regex for Finnish address validation
+// Matches patterns like: Streetname 123, 12345 City, Finland
+// or variations with optional apartment/floor info
+// Updated: Made comma optional to support "Street 3 12345 City" format
+const FINNISH_ADDRESS_REGEX = /^[a-zA-ZäöÅÖÄ\s\-'.]+?\s+\d+[a-zA-Z]?(?:\s*[,\-]\s*(?:A|B|C|D|E|F|G|H|J|K|L|M|N|O|P|R|S|T|U|V|W|X|Y|Z|Ä|Ö)\d*)?[,\s\\n]+\s*\d{4,5}\s+[a-zA-ZäöÅÖÄ\s\-'.]+(?:[,\\n]+\s*Finland)?$/i;
+
+/**
+ * Normalizes an address for comparison by:
+ * - Converting to lowercase
+ * - Removing extra whitespace
+ * - Standardizing separators (commas, newlines)
+ * - Removing "Finland" suffix for comparison
+ */
+function normalizeAddress(address: string): string {
+  return address
+    .toLowerCase()
+    .replace(/\r\n/g, '\n')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/\s+/g, ' ')
+    .replace(/,\s*finland$/i, '')
+    .replace(/\bfinland\b/i, '')
+    .trim();
+}
+
+/**
+ * Validates if an address matches Finnish address format
+ * Returns true if the address appears to be a valid Finnish address
+ */
+function isValidFinnishAddress(address: string): boolean {
+  // Minimum length check
+  if (address.length < 10) {
+    return false;
+  }
+  
+  // Must contain a postal code (4-5 digits)
+  if (!/\b\d{4,5}\b/.test(address)) {
+    return false;
+  }
+  
+  // Must contain at least one letter (street name)
+  if (!/[a-zA-ZäöÅÖÄ]/.test(address)) {
+    return false;
+  }
+  
+  // Must contain at least one number (street number)
+  if (!/\d/.test(address)) {
+    return false;
+  }
+  
+  // Check against the regex pattern
+  return FINNISH_ADDRESS_REGEX.test(address.trim());
+}
+
+/**
+ * Checks if two addresses are essentially the same after normalization
+ * This handles cases where the same address is entered with different formatting
+ */
+function addressesMatch(address1: string, address2: string): boolean {
+  const norm1 = normalizeAddress(address1);
+  const norm2 = normalizeAddress(address2);
+  
+  // Exact match after normalization
+  if (norm1 === norm2) {
+    return true;
+  }
+  
+  // Check if one contains the other (handles partial matches)
+  if (norm1.includes(norm2) || norm2.includes(norm1)) {
+    return true;
+  }
+  
+  // Compare key components: postal code and street number
+  const postalCode1 = norm1.match(/\b\d{4,5}\b/)?.[0];
+  const postalCode2 = norm2.match(/\b\d{4,5}\b/)?.[0];
+  const streetNum1 = norm1.match(/\b\d+[a-zA-Z]?\b/)?.[0];
+  const streetNum2 = norm2.match(/\b\d+[a-zA-Z]?\b/)?.[0];
+  
+  if (postalCode1 && postalCode2 && streetNum1 && streetNum2) {
+    return postalCode1 === postalCode2 && streetNum1 === streetNum2;
+  }
+  
+  return false;
+}
+
 function normalizeDeliveryFee(value: unknown): number {
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return DEFAULT_DELIVERY_FEE;
@@ -284,58 +418,90 @@ function normalizeDeliveryFee(value: unknown): number {
   return value;
 }
 
+// ============================================================================
+// NOMINATIM (OpenStreetMap) GEOCODING - PRIMARY (FREE, NO API KEY)
+// ============================================================================
+
 async function geocodeFinnishAddress(address: string): Promise<{
   coordinates: [number, number];
   label: string;
-}> {
-  if (!nlsApiKey) {
-    throw new Error('National Land Survey API key is not configured.');
+} | null> {
+  // Nominatim uses lat/lon (WGS84), not EPSG:3067
+  const url = new URL('https://nominatim.openstreetmap.org/search');
+  
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('q', address);
+  url.searchParams.set('limit', '1');
+  url.searchParams.set('addressdetails', '1');
+  url.searchParams.set('countrycodes', 'fi'); // Restrict to Finland for better accuracy
+
+  try {
+    console.log(`[Geocoding] Nominatim: "${address.replace(/\n/g, ', ')}"`);
+    const response = await fetch(url.toString(), {
+      headers: { 
+        'User-Agent': 'SumiSushiDelivery/1.0',
+        'Accept': 'application/json' 
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`[Geocoding] Nominatim error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (!data || data.length === 0) {
+      console.warn(`[Geocoding] No results from Nominatim for: "${address}"`);
+      return null;
+    }
+
+    const result = data[0];
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+
+    if (isNaN(lat) || isNaN(lon)) {
+      console.error('[Geocoding] Invalid coordinates from Nominatim');
+      return null;
+    }
+
+    const label = result.display_name || address;
+
+    console.log(`[Geocoding] ✅ Found: ${label.split(',')[0]}`);
+    return {
+      coordinates: [lat, lon],
+      label,
+    };
+  } catch (error: any) {
+    console.error(`[Geocoding] Nominatim fetch failed: ${error.message}`);
+    return null;
   }
-
-  const url = new URL(
-    'https://avoin-paikkatieto.maanmittauslaitos.fi/geocoding/v1/pelias/search',
-  );
-  url.searchParams.set('text', address);
-  url.searchParams.set('sources', 'addresses,interpolated-road-addresses');
-  url.searchParams.set('crs', 'EPSG:3067');
-  url.searchParams.set('lang', 'fi');
-  url.searchParams.set('size', '1');
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: createNlsAuthorizationHeader(nlsApiKey),
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Geocoding failed with status ${response.status}.`);
-  }
-
-  const data = await response.json();
-  const feature = data?.features?.[0];
-  const coordinates = feature?.geometry?.coordinates;
-
-  if (
-    !Array.isArray(coordinates) ||
-    coordinates.length < 2 ||
-    typeof coordinates[0] !== 'number' ||
-    typeof coordinates[1] !== 'number'
-  ) {
-    throw new Error('Address could not be matched to a Finnish location.');
-  }
-
-  const label = feature?.properties?.label || feature?.properties?.name || address;
-
-  return {
-    coordinates: [coordinates[0], coordinates[1]],
-    label,
-  };
 }
 
+/**
+ * Calculate distance using Haversine formula (for lat/lon coordinates)
+ * More accurate for geographic coordinates than Euclidean distance
+ */
 function getDistanceMeters(from: [number, number], to: [number, number]): number {
-  const dx = from[0] - to[0];
-  const dy = from[1] - to[1];
-  return Math.sqrt(dx * dx + dy * dy);
+  const R = 6371000; // Earth's radius in meters
+  const [lat1, lon1] = from;
+  const [lat2, lon2] = to;
+
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
+function toRadians(degrees: number): number {
+  return degrees * (Math.PI / 180);
 }
 
 async function fetchSiteSettings(): Promise<SiteSettingsRecord> {
@@ -893,7 +1059,7 @@ function isFlatpayWebhookAuthenticated(req: express.Request): boolean {
   return secureCompare(username, expectedUsername) && secureCompare(password, expectedPassword);
 }
 
-app.post('/api/flatpay/session', async (req, res) => {
+app.post('/api/flatpay/session', checkoutLimiter, async (req, res) => {
   try {
     requireAdminDb();
     getFlatpayApiKey();
@@ -993,13 +1159,10 @@ app.post('/api/flatpay/webhook', async (req, res) => {
   }
 });
 
-app.post('/api/validate-delivery-address', async (req, res) => {
+app.post('/api/validate-delivery-address', geocodingLimiter, async (req, res) => {
   try {
-    if (!nlsApiKey) {
-      return res.status(503).json({
-        error: 'Delivery address validation is not configured on this environment.',
-      });
-    }
+    // Nominatim (OpenStreetMap) is free and doesn't require an API key
+    // No API key check needed anymore
 
     const customerAddress = sanitizeString(req.body?.customerAddress);
     const restaurantAddress = sanitizeString(req.body?.restaurantAddress);
@@ -1010,29 +1173,52 @@ app.post('/api/validate-delivery-address', async (req, res) => {
       });
     }
 
+    console.log(`[Geocoding] validating: "${customerAddress}" against restaurant: "${restaurantAddress}"`);
+
+    // FIRST CHECK: If addresses match (after normalization), distance is 0
+    if (addressesMatch(customerAddress, restaurantAddress)) {
+      console.log('[Geocoding] Addresses match - setting distance to 0 (free delivery)');
+      return res.json({
+        distanceMeters: 0,
+        withinFreeDeliveryRadius: true,
+        freeDeliveryRadiusMeters: FREE_DELIVERY_RADIUS_METERS,
+        matchedCustomerAddress: customerAddress,
+        matchedRestaurantAddress: restaurantAddress,
+        isFallback: false
+      });
+    }
+
     const [customerLocation, restaurantLocation] = await Promise.all([
       geocodeFinnishAddress(customerAddress),
       geocodeFinnishAddress(restaurantAddress),
     ]);
 
-    const distanceMeters = getDistanceMeters(
-      customerLocation.coordinates,
-      restaurantLocation.coordinates,
-    );
+    let distanceMeters = 6000;
+    let isFallback = false;
+
+    if (customerLocation && restaurantLocation) {
+      distanceMeters = getDistanceMeters(
+        customerLocation.coordinates,
+        restaurantLocation.coordinates,
+      );
+    } else {
+      console.warn('[Geocoding] Using fallback distance (6km) due to geocoding failure.');
+      isFallback = true;
+    }
 
     res.json({
       distanceMeters,
       withinFreeDeliveryRadius: distanceMeters <= FREE_DELIVERY_RADIUS_METERS,
       freeDeliveryRadiusMeters: FREE_DELIVERY_RADIUS_METERS,
-      matchedCustomerAddress: customerLocation.label,
-      matchedRestaurantAddress: restaurantLocation.label,
+      matchedCustomerAddress: customerLocation?.label || customerAddress,
+      matchedRestaurantAddress: restaurantLocation?.label || restaurantAddress,
+      isFallback
     });
   } catch (error: any) {
-    console.error('Error validating delivery address:', error.message);
-    res.status(422).json({
-      error:
-        error.message ||
-        'We could not validate that delivery address. Please check the address and try again.',
+    console.error('Error in validation endpoint:', error.message);
+    res.status(500).json({
+      error: 'We encountered an error while validating the address, but you can still proceed with the default fee.',
+      isFallback: true
     });
   }
 });
@@ -1048,7 +1234,6 @@ app.get('/api/health', (_req, res) => {
         process.env.FLATPAY_WEBHOOK_USERNAME?.trim() &&
           process.env.FLATPAY_WEBHOOK_PASSWORD?.trim(),
       ),
-      nlsConfigured: Boolean(nlsApiKey?.trim()),
       smtpConfigured: Boolean(
         process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
       ),
@@ -1068,6 +1253,47 @@ app.get('*', (req, res, next) => {
   }
   res.sendFile(path.join(distPath, 'index.html'));
 });
+
+// ============================================================================
+// GLOBAL ERROR HANDLER - Must be last middleware
+// Prevents leaking internal errors to clients
+// ============================================================================
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[Server Error]:', err.message);
+  
+  // Don't expose internal error details in production
+  const isDev = process.env.NODE_ENV !== 'production';
+  
+  res.status(err.status || 500).json({
+    error: isDev ? err.message : 'An internal server error occurred. Please try again later.',
+    ...(isDev && { stack: err.stack }),
+  });
+});
+
+// Hide health check details in production (information disclosure)
+const originalHealthHandler = app._router.stack.find(
+  (layer: any) => layer.route?.path === '/api/health'
+);
+
+if (originalHealthHandler) {
+  // Replace health endpoint to hide sensitive info in production
+  app.get('/api/health', (_req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      // Only expose minimal info in production
+      ...(process.env.NODE_ENV !== 'production' && {
+        checks: {
+          firebaseAdminConfigured: isFirebaseAdminConfigured(),
+          flatpayConfigured: Boolean(process.env.FLATPAY_PRIVATE_API_KEY?.trim()),
+          smtpConfigured: Boolean(
+            process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
+          ),
+        },
+      }),
+    });
+  });
+}
 
 initEmailTransporter();
 

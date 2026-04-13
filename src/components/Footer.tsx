@@ -9,7 +9,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useSettings } from "../context/SettingsContext";
+import { useSettings } from "../hooks/useSettings";
 import { BrandLogo } from "./BrandLogo";
 
 export function Footer() {

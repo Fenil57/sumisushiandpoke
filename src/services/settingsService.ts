@@ -32,7 +32,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   restaurantKanji: '\u70ad',
   subtitle: 'Experience the true taste of Sumi, delivered to your door.',
   contactEmail: 'contact@sumisushi.fi',
-  contactPhone: '+358 44 247 9393',
+  contactPhone: '044 2479393',
   address: 'Kuskinkatu 3\n20780 Kaarina, Finland',
   deliveryFee: 3,
   instagramUrl: '',

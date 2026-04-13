@@ -7,7 +7,7 @@ import {
   DEFAULT_SETTINGS,
 } from "../services/settingsService";
 import { Save, Loader2, CheckCircle2 } from "lucide-react";
-import { useSettings } from "../context/SettingsContext";
+import { useSettings } from "../hooks/useSettings";
 
 const numberFields = new Set([
   "deliveryFee",
