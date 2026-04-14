@@ -6,12 +6,14 @@ import { Fragment } from 'react';
 
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { SettingsProvider } from './context/SettingsContext';
+import { CartProvider } from './context/CartContext';
 import { AnimatePresence } from 'motion/react';
 import { Navbar } from './components/Navbar';
 import { Home } from './pages/Home';
 import { OrderOnline } from './pages/OrderOnline';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { Cart } from './pages/Cart';
 import { Restaurant } from './pages/Restaurant';
 import { Footer } from './components/Footer';
 import { PageTransition } from './components/PageTransition';
@@ -28,6 +30,7 @@ function AnimatedRoutes() {
           <Route path="/" element={<PageTransition><Home /></PageTransition>} />
           <Route path="/order" element={<PageTransition><OrderOnline /></PageTransition>} />
           <Route path="/restaurant" element={<PageTransition><Restaurant /></PageTransition>} />
+          <Route path="/cart" element={<PageTransition><Cart /></PageTransition>} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={
             <ProtectedRoute>
@@ -43,9 +46,11 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <SettingsProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <CartProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </CartProvider>
     </SettingsProvider>
   );
 }

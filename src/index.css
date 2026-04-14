@@ -3,7 +3,7 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
-  
+
   --color-washi: #f9f6f0;
   --color-sumi: #1c1c1c;
   --color-shu: #c92a2a;
@@ -34,16 +34,58 @@ body {
 }
 
 /* Custom global scrollbar */
+/* Firefox Fallback */
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-shu) transparent;
+  }
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
+  height: 4px;
 }
+
 ::-webkit-scrollbar-track {
-  background: var(--color-washi);
+  background: transparent !important;
+  background-color: transparent !important;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--color-shu);
-  border-radius: 6px;
+  border-radius: 10px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #a31c1c; /* slightly darker red for hover */
+  background: #a31c1c;
+}
+
+/* Mobile/Touch Device optimization */
+@media (hover: none) and (pointer: coarse) {
+  * {
+    /* Re-enable for mobile to help visibility */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-shu) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-shu);
+    border-radius: 100px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+  }
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }

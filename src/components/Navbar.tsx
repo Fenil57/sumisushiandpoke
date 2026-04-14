@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, Globe, ChevronDown } from 'lucide-react';
+import { Menu, X, Globe, ChevronDown, ShoppingBag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { BrandLogo } from './BrandLogo';
+import { useCart } from '../context/CartContext';
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -11,6 +12,7 @@ export function Navbar() {
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const location = useLocation();
   const { t, i18n } = useTranslation();
+  const { totalItems } = useCart();
   const langMenuRef = useRef<HTMLDivElement>(null);
   const isOrderPage = location.pathname === '/order';
   const isDarkPage = location.pathname === '/restaurant';
@@ -68,13 +70,9 @@ export function Navbar() {
 
         <div className="flex items-center gap-6 md:gap-10">
           <div className="hidden md:flex items-center gap-10">
-            {!isOrderPage && (
-              <>
-                <a href="#menu" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('nav.menu')}</a>
-                <a href="#delivery" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('nav.delivery')}</a>
-                <Link to="/restaurant" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('restaurant.tag')}</Link>
-              </>
-            )}
+            <a href="/#menu" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('nav.menu')}</a>
+            <a href="/#delivery" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('nav.delivery')}</a>
+            <Link to="/restaurant" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('restaurant.tag')}</Link>
             <div className="relative" ref={langMenuRef}>
               <button
                 onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
@@ -108,14 +106,20 @@ export function Navbar() {
                 )}
               </AnimatePresence>
             </div>
-            {!isOrderPage && (
-              <Link
-                to="/order"
-                className={`px-8 py-3 text-xs tracking-[0.2em] uppercase font-medium transition-all bg-[var(--color-sumi)] text-[var(--color-washi)] hover:bg-[var(--color-shu)] hover:text-[var(--color-washi)]`}
-              >
-                {t('nav.orderNow')}
-              </Link>
-            )}
+            <Link
+              to="/order"
+              className={`px-8 py-3 text-xs tracking-[0.2em] uppercase font-medium transition-all bg-[var(--color-sumi)] text-[var(--color-washi)] hover:bg-[var(--color-shu)] hover:text-[var(--color-washi)]`}
+            >
+              {t('nav.orderNow')}
+            </Link>
+            <Link to="/cart" className={`relative flex items-center justify-center p-2 transition-colors ${textColorClass} ${hoverTextColorClass}`} title="Cart">
+              <ShoppingBag size={20} />
+              {totalItems > 0 && (
+                <span className="absolute top-0 right-0 bg-[var(--color-shu)] text-[var(--color-washi)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </Link>
           </div>
 
           {/* Mobile Menu Toggle & Menu Icon */}
@@ -126,20 +130,15 @@ export function Navbar() {
             >
               <Globe size={14} /> {i18n.language.toUpperCase()}
             </button>
-            {!isOrderPage && (
-              <Link
-                to="/order"
-                className={`transition-colors cursor-pointer flex flex-col items-center ${textColorClass} ${hoverTextColorClass}`}
-                title={t('nav.menu')}
-              >
-                <BrandLogo
-                  showText={false}
-                  className="gap-0"
-                  imageClassName="h-6 w-6 object-contain"
-                />
-                <span className="text-[8px] uppercase tracking-tighter mt-0.5">{t('nav.menu')}</span>
-              </Link>
-            )}
+
+            <Link to="/cart" className={`relative flex items-center justify-center p-1 transition-colors ${textColorClass} ${hoverTextColorClass}`}>
+              <ShoppingBag size={20} />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[var(--color-shu)] text-[var(--color-washi)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </Link>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className={`transition-colors cursor-pointer ${textColorClass} ${hoverTextColorClass}`}
@@ -199,31 +198,26 @@ export function Navbar() {
             {/* Minimalist Sun Illustration */}
             <div className="absolute top-24 left-12 w-16 h-16 rounded-full bg-[var(--color-shu)]/10 opacity-50 border border-[var(--color-shu)]/10"></div>
 
-            <Link to="/" className="relative z-10 mb-8">
-              <BrandLogo
-                stacked
-                imageClassName="h-20 w-20 object-contain"
-                textClassName="text-2xl font-bold tracking-[0.14em] text-[var(--color-sumi)]"
-                subtextClassName="text-xs tracking-[0.24em] uppercase text-[var(--color-shu)]"
-              />
-            </Link>
+
 
             <div className="flex flex-col items-center gap-8 relative z-10">
-              {!isOrderPage ? (
-                <>
-                  <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Home {t('nav.menu')}</a>
-                  <a href="#delivery" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">{t('nav.delivery')}</a>
-                  <Link to="/restaurant" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">{t('restaurant.tag')}</Link>
-                  <Link to="/order" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Full {t('nav.menu')}</Link>
-                </>
-              ) : (
-                <Link to="/" className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Home</Link>
-              )}
+              <a href="/#menu" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Home {t('nav.menu')}</a>
+              <a href="/#delivery" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">{t('nav.delivery')}</a>
+              <Link to="/restaurant" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">{t('restaurant.tag')}</Link>
+              <Link to="/order" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Full {t('nav.menu')}</Link>
               <Link
                 to="/order"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="px-12 py-4 bg-[var(--color-sumi)] text-[var(--color-washi)] text-sm tracking-[0.2em] uppercase font-medium transition-all hover:bg-[var(--color-shu)]"
               >
                 {t('nav.orderNow')}
+              </Link>
+              <Link
+                to="/cart"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-12 py-4 border border-[var(--color-sumi)] text-[var(--color-sumi)] text-sm tracking-[0.2em] uppercase font-medium transition-all hover:bg-[var(--color-sumi)] hover:text-[var(--color-washi)] flex items-center gap-2"
+              >
+                <ShoppingBag size={18} /> Cart ({totalItems})
               </Link>
             </div>
           </motion.div>

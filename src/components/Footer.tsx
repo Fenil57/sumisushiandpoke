@@ -22,6 +22,7 @@ export function Footer() {
       label: "Instagram",
       icon: <Instagram size={20} />,
     },
+    /*
     {
       href: settings.facebookUrl,
       label: "Facebook",
@@ -32,6 +33,7 @@ export function Footer() {
       label: "Twitter",
       icon: <Twitter size={20} />,
     },
+    */
   ];
 
   const hoursRows = [
