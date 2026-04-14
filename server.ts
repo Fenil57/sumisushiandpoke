@@ -185,11 +185,26 @@ function isAllowedOrigin(origin: string): boolean {
     }
 
     const configuredBaseUrl = process.env.APP_BASE_URL?.trim();
-    if (!configuredBaseUrl) {
-      return false;
+    if (configuredBaseUrl) {
+      return parsed.origin === new URL(configuredBaseUrl).origin;
     }
 
-    return parsed.origin === new URL(configuredBaseUrl).origin;
+    // On Vercel, the VERCEL_URL env var is set automatically.
+    // Allow the deployment URL as a valid origin so that same-origin
+    // browser requests (which include an Origin header) are not rejected.
+    const vercelUrl = process.env.VERCEL_URL?.trim();
+    if (vercelUrl) {
+      const vercelOrigin = `https://${vercelUrl}`;
+      if (parsed.origin === new URL(vercelOrigin).origin) {
+        return true;
+      }
+      // Also allow *.vercel.app preview deployments for the same project
+      if (parsed.hostname.endsWith('.vercel.app') && parsed.protocol === 'https:') {
+        return true;
+      }
+    }
+
+    return false;
   } catch {
     return false;
   }
