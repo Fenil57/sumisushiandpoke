@@ -1242,17 +1242,19 @@ app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    checks: {
-      firebaseAdminConfigured: isFirebaseAdminConfigured(),
-      flatpayConfigured: Boolean(process.env.FLATPAY_PRIVATE_API_KEY?.trim()),
-      flatpayWebhookAuthConfigured: Boolean(
-        process.env.FLATPAY_WEBHOOK_USERNAME?.trim() &&
-          process.env.FLATPAY_WEBHOOK_PASSWORD?.trim(),
-      ),
-      smtpConfigured: Boolean(
-        process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
-      ),
-    },
+    ...(process.env.NODE_ENV !== 'production' && {
+      checks: {
+        firebaseAdminConfigured: isFirebaseAdminConfigured(),
+        flatpayConfigured: Boolean(process.env.FLATPAY_PRIVATE_API_KEY?.trim()),
+        flatpayWebhookAuthConfigured: Boolean(
+          process.env.FLATPAY_WEBHOOK_USERNAME?.trim() &&
+            process.env.FLATPAY_WEBHOOK_PASSWORD?.trim(),
+        ),
+        smtpConfigured: Boolean(
+          process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
+        ),
+      },
+    }),
   });
 });
 
@@ -1285,30 +1287,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// Hide health check details in production (information disclosure)
-const originalHealthHandler = app._router.stack.find(
-  (layer: any) => layer.route?.path === '/api/health'
-);
-
-if (originalHealthHandler) {
-  // Replace health endpoint to hide sensitive info in production
-  app.get('/api/health', (_req, res) => {
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      // Only expose minimal info in production
-      ...(process.env.NODE_ENV !== 'production' && {
-        checks: {
-          firebaseAdminConfigured: isFirebaseAdminConfigured(),
-          flatpayConfigured: Boolean(process.env.FLATPAY_PRIVATE_API_KEY?.trim()),
-          smtpConfigured: Boolean(
-            process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
-          ),
-        },
-      }),
-    });
-  });
-}
 
 initEmailTransporter();
 
