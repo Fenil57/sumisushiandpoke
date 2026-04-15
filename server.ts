@@ -469,14 +469,20 @@ async function geocodeFinnishAddress(address: string): Promise<{
   url.searchParams.set('addressdetails', '1');
   url.searchParams.set('countrycodes', 'fi'); // Restrict to Finland for better accuracy
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
   try {
     console.log(`[Geocoding] Nominatim: "${address.replace(/\n/g, ', ')}"`);
     const response = await fetch(url.toString(), {
+      signal: controller.signal as any,
       headers: { 
         'User-Agent': 'SumiSushiDelivery/1.0',
         'Accept': 'application/json' 
       },
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error(`[Geocoding] Nominatim error: ${response.status}`);
@@ -507,8 +513,14 @@ async function geocodeFinnishAddress(address: string): Promise<{
       label,
     };
   } catch (error: any) {
-    console.error(`[Geocoding] Nominatim fetch failed: ${error.message}`);
+    if (error.name === 'AbortError') {
+      console.warn(`[Geocoding] Nominatim request timed out for: "${address}"`);
+    } else {
+      console.error(`[Geocoding] Nominatim fetch failed: ${error.message}`);
+    }
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
