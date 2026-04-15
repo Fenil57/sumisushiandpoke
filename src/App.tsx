@@ -15,6 +15,7 @@ import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Cart } from './pages/Cart';
 import { Restaurant } from './pages/Restaurant';
+import { Reservations } from './pages/Reservations';
 import { Footer } from './components/Footer';
 import { PageTransition } from './components/PageTransition';
 import { CustomCursor } from './components/CustomCursor';
@@ -30,6 +31,7 @@ function AnimatedRoutes() {
           <Route path="/" element={<PageTransition><Home /></PageTransition>} />
           <Route path="/order" element={<PageTransition><OrderOnline /></PageTransition>} />
           <Route path="/restaurant" element={<PageTransition><Restaurant /></PageTransition>} />
+          <Route path="/reservations" element={<PageTransition><Reservations /></PageTransition>} />
           <Route path="/cart" element={<PageTransition><Cart /></PageTransition>} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={

@@ -17,6 +17,11 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 
+// Safety warning in the console
+if (import.meta.env.DEV) {
+  console.log(`%c 🛡️ Firebase: Connected to project [${firebaseConfig.projectId}] in development mode.`, "color: #ff9800; font-weight: bold;");
+}
+
 // Connect to emulators in development (uncomment if using Firebase Emulator Suite)
 // if (import.meta.env.DEV) {
 //   connectFirestoreEmulator(db, 'localhost', 8080);

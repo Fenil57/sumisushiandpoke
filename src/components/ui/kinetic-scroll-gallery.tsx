@@ -4,6 +4,7 @@ import { motion, useScroll, useSpring, useTransform, MotionValue } from "motion/
 interface KineticGridItemProps {
   image: string;
   scrollVelocity: MotionValue<number>;
+  key?: React.Key;
 }
 
 const KineticGridItem = ({ image, scrollVelocity }: KineticGridItemProps) => {

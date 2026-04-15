@@ -9,7 +9,8 @@ import rateLimit from 'express-rate-limit';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb, isFirebaseAdminConfigured } from './server/firebaseAdmin.js';
 
-dotenv.config();
+// Load environment variables. .env.local takes precedence over .env for safe local development.
+dotenv.config({ path: ['.env.local', '.env'] });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,6 +23,7 @@ const DELIVERY_FEE_THRESHOLD = 20;
 const DEFAULT_DELIVERY_FEE = 3;
 const DEFAULT_RESTAURANT_ADDRESS = 'Kuskinkatu 3\n20780 Kaarina, Finland';
 const ORDERS_COLLECTION = 'orders';
+const RESERVATIONS_COLLECTION = 'reservations';
 const MENU_COLLECTION = 'menu_items';
 const PENDING_CHECKOUTS_COLLECTION = 'pending_checkouts';
 const SETTINGS_DOC_PATH = 'settings/general';
@@ -315,6 +317,23 @@ function toCents(amount: number): number {
 function createCheckoutHandle(): string {
   const randomPart = randomUUID().replace(/-/g, '').slice(0, 12);
   return `web-${Date.now()}-${randomPart}`;
+}
+
+async function getSiteSettings() {
+  try {
+    const db = requireAdminDb();
+    const snapshot = await db.doc(SETTINGS_DOC_PATH).get();
+    if (snapshot.exists) {
+      return snapshot.data() as any;
+    }
+  } catch (error) {
+    console.error('Error fetching settings for email:', error);
+  }
+  return {
+    restaurantName: 'Sumi Sushi and Poke',
+    contactPhone: '044 2479393',
+    address: 'Kuskinkatu 3, 20780 Kaarina'
+  };
 }
 
 function isValidPhone(phone: string): boolean {
@@ -891,6 +910,130 @@ async function sendOrderNotificationEmail(
   });
 }
 
+async function sendReservationNotificationEmail(
+  reservation: {
+    id: string;
+    customerName: string;
+    customerPhone: string;
+    customerEmail: string;
+    date: string;
+    time: string;
+    guests: number;
+    specialRequests?: string;
+  },
+  req?: express.Request,
+) {
+  if (!emailTransporter) {
+    return;
+  }
+
+  const notificationEmail = process.env.NOTIFICATION_EMAIL || process.env.SMTP_USER;
+  if (!notificationEmail) {
+    return;
+  }
+
+  const adminUrl = getAdminDashboardUrl(req);
+
+  const html = `
+    <div style="max-width:500px;margin:0 auto;background:#1a1a1a;color:#e8e0d4;font-family:Georgia,serif;">
+      <div style="background:#c23b22;padding:20px 24px;">
+        <h1 style="margin:0;font-size:20px;letter-spacing:3px;color:#e8e0d4;">SUMI <span style="font-weight:300;">ADMIN</span></h1>
+        <p style="margin:4px 0 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.7;">New Reservation Request</p>
+      </div>
+
+      <div style="padding:24px;">
+        <div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #333;">
+          <p style="margin:0 0 4px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#888;">Ref #${reservation.id.slice(-8).toUpperCase()}</p>
+          <p style="margin:0 0 4px;font-size:18px;color:#e8e0d4;">${reservation.customerName}</p>
+          <p style="margin:0;font-size:13px;color:#888;">
+            ${reservation.customerPhone ? `Phone ${reservation.customerPhone}` : ''}
+            ${reservation.customerEmail ? ` · Email ${reservation.customerEmail}` : ''}
+          </p>
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Date:</strong> <span style="color:#e8e0d4;">${reservation.date}</span></p>
+          <p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Time:</strong> <span style="color:#e8e0d4;">${reservation.time}</span></p>
+          <p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Guests:</strong> <span style="color:#e8e0d4;">${reservation.guests}</span></p>
+          ${reservation.specialRequests ? `<p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Requests:</strong> <br/><span style="color:#e8e0d4;">${reservation.specialRequests}</span></p>` : ''}
+        </div>
+      </div>
+
+      <div style="padding:16px 24px;background:#111;text-align:center;">
+        <p style="margin:0;font-size:11px;color:#555;">
+          Open the <a href="${adminUrl}" style="color:#c23b22;text-decoration:none;">Admin Dashboard</a> to manage this reservation.
+        </p>
+      </div>
+    </div>
+  `;
+
+  await emailTransporter.sendMail({
+    from: `"Sumi Sushi and Poke" <${process.env.SMTP_USER}>`,
+    to: notificationEmail,
+    subject: `New Reservation: ${reservation.date} at ${reservation.time} for ${reservation.guests} guests`,
+    html,
+  });
+}
+
+async function sendReservationConfirmationEmail(
+  reservation: {
+    customerName: string;
+    customerEmail: string;
+    date: string;
+    time: string;
+    guests: number;
+    specialRequests?: string;
+  },
+  settings?: any
+) {
+  if (!emailTransporter) return;
+
+  const restaurantName = settings?.restaurantName || 'Sumi Sushi and Poke';
+  const contactPhone = settings?.contactPhone || '044 2479393';
+  const address = settings?.address || 'Kuskinkatu 3, 20780 Kaarina';
+
+  const html = `
+    <div style="max-width:500px;margin:0 auto;background:#1a1a1a;color:#e8e0d4;font-family:Georgia,serif;padding:0;border:1px solid #333;">
+      <div style="background:#c23b22;padding:40px 24px;text-align:center;">
+        <h1 style="margin:0;font-size:24px;letter-spacing:4px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
+        <p style="margin:8px 0 0;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">Reservation Received</p>
+      </div>
+
+      <div style="padding:40px 32px;">
+        <p style="font-size:18px;margin-bottom:24px;">Hello ${reservation.customerName},</p>
+        <p style="line-height:1.6;color:#ccc;margin-bottom:32px;">
+          Thank you for choosing ${restaurantName}. We have received your reservation request and are currently processing it. 
+          You will receive a final confirmation shortly once our staff has verified the table availability.
+        </p>
+        <div style="background:#111;padding:24px;border-radius:4px;margin-bottom:32px;">
+          <h3 style="margin:0 0 16px;font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#c23b22;">Your Request Details</h3>
+          <p style="margin:0 0 8px;font-size:14px;"><span style="color:#888;">Date:</span> ${reservation.date}</p>
+          <p style="margin:0 0 8px;font-size:14px;"><span style="color:#888;">Time:</span> ${reservation.time}</p>
+          <p style="margin:0 0 8px;font-size:14px;"><span style="color:#888;">Guests:</span> ${reservation.guests}</p>
+          ${reservation.specialRequests ? `<p style="margin:16px 0 0;font-size:13px;color:#888;font-style:italic;">"${reservation.specialRequests}"</p>` : ''}
+        </div>
+
+        <p style="font-size:13px;color:#888;line-height:1.6;">
+          If you need to make any changes or cancel your request, please give us a call at ${contactPhone}.
+        </p>
+      </div>
+
+      <div style="background:#111;padding:24px;text-align:center;border-top:1px solid #333;">
+        <p style="margin:0;font-size:11px;color:#444;letter-spacing:1px;text-transform:uppercase;">
+          ${address}
+        </p>
+      </div>
+    </div>
+  `;
+
+  await emailTransporter.sendMail({
+    from: `"${restaurantName}" <${process.env.SMTP_USER}>`,
+    to: reservation.customerEmail,
+    subject: `Reservation Request Received - ${restaurantName} (${reservation.date})`,
+    html,
+  });
+}
+
 async function syncCheckoutFromFlatpay(
   handle: string,
   req?: express.Request,
@@ -1235,6 +1378,76 @@ app.post('/api/validate-delivery-address', geocodingLimiter, async (req, res) =>
       error: 'We encountered an error while validating the address, but you can still proceed with the default fee.',
       isFallback: true
     });
+  }
+});
+
+// Reservations endpoint Limit to 5 per 15 minutes per IP to prevent spam
+const reservationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many reservation attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.post('/api/reservations', reservationLimiter, async (req, res) => {
+  try {
+    const db = requireAdminDb();
+    const payload = req.body || {};
+
+    const name = sanitizeString(payload.name);
+    const email = sanitizeString(payload.email);
+    const phone = sanitizeString(payload.phone);
+    const date = sanitizeString(payload.date);
+    const time = sanitizeString(payload.time);
+    const guests = parseInt(payload.guests, 10);
+    const specialRequests = sanitizeString(payload.specialRequests, 1000); // Allow longer string for requests
+
+    if (!name || !email || !phone || !date || !time || isNaN(guests) || guests < 1) {
+      return res.status(400).json({ error: 'Please provide all required fields correctly.' });
+    }
+
+    if (!isValidPhone(phone)) {
+      return res.status(400).json({ error: 'Please provide a valid phone number.' });
+    }
+
+    const reservationRef = db.collection(RESERVATIONS_COLLECTION).doc();
+    const reservationId = reservationRef.id;
+
+    const reservationData = {
+      customer_info: {
+        name,
+        email,
+        phone,
+      },
+      date,
+      time,
+      guests,
+      special_requests: specialRequests,
+      status: 'pending', // pending, confirmed, cancelled
+      created_at: Timestamp.now(),
+      updated_at: Timestamp.now(),
+    };
+
+    await reservationRef.set(reservationData);
+
+    const settings = await getSiteSettings();
+
+    // Send emails in background
+    sendReservationNotificationEmail(
+      {
+        id: reservationId,
+        customerName: name,
+        customerPhone: phone,
+        customerEmail: email,
+        date,
+        time,
+        guests,
+        specialRequests,
+    res.json({ success: true, id: reservationId });
+  } catch (error: any) {
+    console.error('Error creating reservation:', error.message);
+    res.status(500).json({ error: 'We could not submit your reservation. Please try again or call us.' });
   }
 });
 

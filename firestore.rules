@@ -22,21 +22,27 @@ service cloud.firestore {
       allow delete: if false; // Never delete orders
     }
 
+    // Reservations: only admins can read/update.
+    match /reservations/{reservationId} {
+      allow create: if false; // Created via backend API
+      allow read, update: if isAdmin();
+      allow delete: if false; 
+    }
+
     // Pending payment sessions are backend-only
     match /pending_checkouts/{checkoutId} {
       allow read, write: if false;
     }
 
-    // Users/staff: only admins can read/write
+    // Users/staff: only admins can read/write, users can read their own profile
     match /users/{userId} {
-      allow read: if isAdmin() || request.auth.uid == userId;
+      allow read: if (request.auth != null && request.auth.uid == userId) || isAdmin();
       allow write: if isAdmin();
     }
 
     // Helper function: check if the current user is an admin
     function isAdmin() {
       return request.auth != null &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
   }

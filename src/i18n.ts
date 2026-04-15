@@ -193,6 +193,31 @@ const resources = {
         catAtmosphere: "Atmosphere",
         catCuisine: "Cuisine",
         catPeople: "People"
+      },
+      reservations: {
+        tag: "Reservations",
+        title: "Book a",
+        titleItalic: "Table",
+        subtitle: "Reserve your table and experience authentic Japanese cuisine in a warm, intimate setting.",
+        formName: "Full Name",
+        formNamePlaceholder: "Your name",
+        formEmail: "Email",
+        formEmailPlaceholder: "your@email.com",
+        formPhone: "Phone Number",
+        formPhonePlaceholder: "+358...",
+        formDate: "Date",
+        formTime: "Time",
+        formGuests: "Number of Guests",
+        formRequests: "Special Requests (Optional)",
+        formRequestsPlaceholder: "Allergies, high chair, special occasion...",
+        submitButton: "Request Reservation",
+        submitting: "Sending Request...",
+        successTitle: "Reservation Requested",
+        successDesc: "Thank you! We have received your reservation request and will send a confirmation email shortly.",
+        errorTitle: "Something went wrong",
+        submitNew: "Make another reservation",
+        fallback: "Prefer to call? Reach us at",
+        phone: "+358 44 247 9393"
       }
     }
   },
@@ -387,6 +412,31 @@ const resources = {
         catAtmosphere: "Tunnelma",
         catCuisine: "Keittiö",
         catPeople: "Henkilökunta"
+      },
+      reservations: {
+        tag: "Varaukset",
+        title: "Varaa",
+        titleItalic: "Pöytä",
+        subtitle: "Varaa pöytäsi ja koe aito japanilainen keittiö lämpimässä, intiimissä ympäristössä.",
+        formName: "Koko Nimi",
+        formNamePlaceholder: "Nimesi",
+        formEmail: "Sähköposti",
+        formEmailPlaceholder: "oma@email.fi",
+        formPhone: "Puhelinnumero",
+        formPhonePlaceholder: "+358...",
+        formDate: "Päivämäärä",
+        formTime: "Aika",
+        formGuests: "Henkilömäärä",
+        formRequests: "Erityistoiveet (Valinnainen)",
+        formRequestsPlaceholder: "Allergiat, syöttötuoli, juhlapäivä...",
+        submitButton: "Lähetä Varaus",
+        submitting: "Lähetetään...",
+        successTitle: "Varaus Vastaanotettu",
+        successDesc: "Kiitos! Olemme vastaanottaneet varauspyyntösi ja lähetämme vahvistuksen pian.",
+        errorTitle: "Jotain meni pieleen",
+        submitNew: "Tee uusi varaus",
+        fallback: "Haluatko soittaa? Tavoitat meidät numerosta",
+        phone: "+358 44 247 9393"
       }
     }
   }

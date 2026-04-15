@@ -15,6 +15,7 @@ import {
   Settings,
   Globe,
   ChevronDown,
+  Calendar,
 } from "lucide-react";
 import {
   subscribeToOrders,
@@ -26,9 +27,10 @@ import { useTranslation } from "react-i18next";
 import { logout } from "../services/authService";
 import { AdminMenuManager } from "../components/AdminMenuManager";
 import { AdminSettings } from "../components/AdminSettings";
+import { AdminReservations } from "../components/AdminReservations";
 import { BrandLogo } from "../components/BrandLogo";
 
-type AdminTab = "orders" | "menu" | "settings";
+type AdminTab = "orders" | "reservations" | "menu" | "settings";
 
 const STATUS_CONFIG: Record<
   OrderStatus,
@@ -286,6 +288,17 @@ export function AdminDashboard() {
                 <span className="hidden md:inline">{t('admin.orders')}</span>
               </button>
               <button
+                onClick={() => setActiveTab("reservations")}
+                className={`flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold transition-all cursor-pointer border-l border-[var(--color-washi)]/10 ${
+                  activeTab === "reservations"
+                    ? "bg-[var(--color-shu)] text-[var(--color-washi)]"
+                    : "text-[var(--color-washi)]/40 hover:text-[var(--color-washi)]/70"
+                }`}
+              >
+                <Calendar size={14} />
+                <span className="hidden md:inline">{t('reservations.tag')}</span>
+              </button>
+              <button
                 onClick={() => setActiveTab("menu")}
                 className={`flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold transition-all cursor-pointer border-l border-[var(--color-washi)]/10 ${
                   activeTab === "menu"
@@ -538,6 +551,16 @@ export function AdminDashboard() {
                 </div>
               )}
             </div>
+          </motion.div>
+        ) : activeTab === "reservations" ? (
+          <motion.div
+            key="reservations"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25 }}
+          >
+            <AdminReservations />
           </motion.div>
         ) : activeTab === "menu" ? (
           <motion.div

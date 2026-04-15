@@ -15,13 +15,15 @@ function getAdminApp() {
   const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
   if (projectId && clientEmail && privateKey) {
-    return initializeApp({
+    const app = initializeApp({
       credential: cert({
         projectId,
         clientEmail,
         privateKey: normalizePrivateKey(privateKey),
       }),
     });
+    console.log(`\x1b[33m%s\x1b[0m`, `🛡️  Firebase Admin: Connected to [${projectId}]`);
+    return app;
   }
 
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
