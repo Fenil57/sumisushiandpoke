@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { getMenuItems, type MenuItem } from "../services/menuService";
+import { useCart } from "../context/CartContext";
 
 const fallbackItems: MenuItem[] = [
   {
@@ -77,7 +78,17 @@ function pickFeaturedItems(items: MenuItem[]): MenuItem[] {
 export function MenuScroll() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>(fallbackItems);
+  const [addedItemId, setAddedItemId] = useState<string | null>(null);
   const { t } = useTranslation();
+  const { addToCart, cart } = useCart();
+
+  const handleAddToCart = (e: React.MouseEvent, item: MenuItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart(item);
+    setAddedItemId(item.id);
+    setTimeout(() => setAddedItemId(null), 2000);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -132,6 +143,10 @@ export function MenuScroll() {
         <div className="flex flex-col md:flex-row h-[70vh] min-h-[600px] w-full gap-2 md:gap-4">
           {featuredItems.map((item, idx) => {
             const isActive = activeIndex === idx;
+            const isAdded = addedItemId === item.id;
+            const cartItem = cart.find((i) => i.item.id === item.id);
+            const isInCart = !!cartItem;
+            const cartQuantity = cartItem?.quantity || 0;
             return (
               <motion.div
                 key={item.id}
@@ -179,13 +194,13 @@ export function MenuScroll() {
                           <span className="text-xl md:text-2xl text-[#f9f6f0] font-medium">
                             EUR {item.price.toFixed(2)}
                           </span>
-                          <Link
-                            to={`/order?addItem=${item.id}`}
-                            className="text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium text-[#f9f6f0] hover:text-[#c92a2a] transition-colors flex items-center gap-2 cursor-pointer"
+                          <button
+                            onClick={(e) => handleAddToCart(e, item)}
+                            className={`text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium transition-colors flex items-center gap-2 cursor-pointer ${isAdded || isInCart ? 'text-[var(--color-shu)]' : 'text-[#f9f6f0] hover:text-[#c92a2a]'}`}
                           >
                             <span className="w-4 md:w-8 h-[1px] bg-current"></span>{" "}
-                            {t("menu.orderNow")}
-                          </Link>
+                            {isAdded || isInCart ? "Added!" : t("menu.orderNow")}
+                          </button>
                         </div>
                       </motion.div>
                     ) : (

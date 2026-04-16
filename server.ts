@@ -13,6 +13,7 @@ import { getAdminDb, isFirebaseAdminConfigured } from './server/firebaseAdmin.js
 dotenv.config({ path: ['.env.local', '.env'] });
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1456,6 +1457,22 @@ app.post('/api/reservations', reservationLimiter, async (req, res) => {
         time,
         guests,
         specialRequests,
+      },
+      req,
+    ).catch((err) => console.error('Failed to send reservation notification email:', err.message));
+
+    sendReservationConfirmationEmail(
+      {
+        customerName: name,
+        customerEmail: email,
+        date,
+        time,
+        guests,
+        specialRequests,
+      },
+      settings,
+    ).catch((err) => console.error('Failed to send reservation confirmation email:', err.message));
+
     res.json({ success: true, id: reservationId });
   } catch (error: any) {
     console.error('Error creating reservation:', error.message);
