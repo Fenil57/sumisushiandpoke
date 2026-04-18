@@ -47,6 +47,8 @@ const DELIVERY_FEE_THRESHOLD = 20;
 const DEFAULT_DELIVERY_FEE = 3;
 const FREE_DELIVERY_RADIUS_METERS = 5000;
 const CHECKOUT_STORAGE_KEY = "sumi-flatpay-checkout";
+const isOnlinePaymentEnabled =
+  import.meta.env.VITE_ENABLE_ONLINE_PAYMENT === "true";
 
 const FINNISH_ADDRESS_REGEX =
   /^[a-zA-ZäöåÄÖÅ\s\-'.]+?\s+\d+[a-zA-Z]?(?:\s*[,\-]\s*(?:A|B|C|D|E|F|G|H|J|K|L|M|N|O|P|R|S|T|U|V|W|X|Y|Z|Ä|Ö)\d*)?[,\s\n]+\s*\d{4,5}\s+[a-zA-ZäöåÄÖÅ\s\-'.]+(?:[,\n]+\s*Finland)?$/i;
@@ -97,6 +99,10 @@ interface FlatpayVerifyResponse {
 
 interface FlatpaySessionResponse {
   checkoutUrl?: string;
+}
+
+interface ManualOrderResponse {
+  orderId?: string;
 }
 
 export function Cart() {
@@ -212,6 +218,8 @@ export function Cart() {
   }, [orderType, normalizedDeliveryAddress, deliveryQuote]);
 
   useEffect(() => {
+    if (!isOnlinePaymentEnabled) return;
+
     const params = new URLSearchParams(window.location.search);
     const invoiceHandle = params.get("invoice")?.trim();
     const paymentState = params.get("flatpay")?.trim();
@@ -327,21 +335,47 @@ export function Cart() {
     setPaymentError(null);
 
     try {
+      const requestBody = {
+        order_type: orderType,
+        customer_info: {
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          address: orderType === "delivery" ? normalizedDeliveryAddress : undefined,
+        },
+        order_items: cart.map(({ item, quantity }) => ({
+          menu_item_id: item.id,
+          quantity,
+        })),
+      };
+
+      if (!isOnlinePaymentEnabled) {
+        const response = await fetch(getApiUrl("/api/orders/manual"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
+        const data = await readApiJson<ManualOrderResponse>(
+          response,
+          t("checkout.orderPlacementFailed"),
+        );
+
+        if (!data.orderId) {
+          throw new Error(t("checkout.orderPlacementFailed"));
+        }
+
+        setOrderId(data.orderId);
+        setOrderComplete(true);
+        resetCheckoutState();
+        clearStoredCheckout();
+        return;
+      }
+
       const response = await fetch(getApiUrl("/api/flatpay/session"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          order_type: orderType,
-          customer_info: {
-            name: customerName,
-            email: customerEmail,
-            phone: customerPhone,
-            address: orderType === "delivery" ? normalizedDeliveryAddress : undefined,
-          },
-          order_items: cart.map(({ item, quantity }) => ({
-            menu_item_id: item.id,
-            quantity,
-          })),
+          ...requestBody,
           redirect_url_base: window.location.origin + "/cart" // Make sure redirect goes back to /cart page!
         }),
       });
@@ -351,7 +385,14 @@ export function Cart() {
 
       window.location.assign(data.checkoutUrl);
     } catch (err: any) {
-      setPaymentError(err.message || t("checkout.paymentInitializationFailed"));
+      setPaymentError(
+        err.message ||
+          t(
+            isOnlinePaymentEnabled
+              ? "checkout.paymentInitializationFailed"
+              : "checkout.orderPlacementFailed",
+          ),
+      );
     } finally {
       setIsCreatingPayment(false);
     }
@@ -379,7 +420,13 @@ export function Cart() {
                 <Check className="w-8 h-8" />
               </div>
               <h2 className="text-3xl font-serif font-bold text-[var(--color-sumi)] mb-4">{t("order.confirmed")}</h2>
-              <p className="text-[var(--color-sumi)]/70 mb-2 text-sm leading-relaxed">{t("order.confirmedDesc")}</p>
+              <p className="text-[var(--color-sumi)]/70 mb-2 text-sm leading-relaxed">
+                {t(
+                  isOnlinePaymentEnabled
+                    ? "order.confirmedDesc"
+                    : "order.confirmedManualDesc",
+                )}
+              </p>
               {orderId && (
                 <p className="text-[var(--color-sumi)]/40 mb-8 text-xs tracking-wide">
                   {t("order.orderNumber")}: #{orderId.slice(-8).toUpperCase()}
@@ -589,6 +636,12 @@ export function Cart() {
                   </div>
                 </div>
 
+                {!isOnlinePaymentEnabled && (
+                  <div className="mb-4 border border-[var(--color-washi)]/10 bg-[var(--color-washi)]/5 px-4 py-3 text-xs text-[var(--color-washi)]/70 leading-relaxed">
+                    {t("checkout.manualOrderHint")}
+                  </div>
+                )}
+
                 {paymentError && (
                   <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 p-3 mb-4">
                     <AlertCircle size={16} className="text-red-400 shrink-0" />
@@ -598,14 +651,24 @@ export function Cart() {
 
                 <div className="flex flex-col gap-3">
                   <motion.button onClick={handleProceedToPayment} disabled={!customerName.trim() || !customerPhone.trim() || (orderType === "delivery" && !normalizedDeliveryAddress) || isCreatingPayment} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative overflow-hidden w-full py-4 bg-[var(--color-shu)] text-[var(--color-washi)] font-serif text-xl tracking-wide hover:bg-[#a02020] transition-colors disabled:opacity-50">
-                    <span className={`transition-opacity duration-300 ${isCreatingPayment ? "opacity-0" : "opacity-100"}`}>{t("checkout.proceedToPayment")}</span>
+                    <span className={`transition-opacity duration-300 ${isCreatingPayment ? "opacity-0" : "opacity-100"}`}>
+                      {t(
+                        isOnlinePaymentEnabled
+                          ? "checkout.proceedToPayment"
+                          : "checkout.placeOrder",
+                      )}
+                    </span>
                     {isCreatingPayment && (
                       <span className="absolute inset-0 flex items-center justify-center">
                         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-5 h-5 border-2 border-[var(--color-shu)]/40 border-t-transparent rounded-full" />
                       </span>
                     )}
                   </motion.button>
-                  <button onClick={() => setCheckoutStep("cart")} className="w-full py-3 text-xs tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/50 hover:text-[var(--color-washi)] transition-colors">
+                  <button
+                    onClick={() => setCheckoutStep("cart")}
+                    className="w-full py-3 text-xs tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/50 hover:text-[var(--color-washi)] transition-all flex items-center justify-center gap-2 group/back"
+                  >
+                    <ArrowLeft size={14} className="group-hover/back:-translate-x-1 transition-transform" />
                     {t("checkout.backToCart")}
                   </button>
                 </div>

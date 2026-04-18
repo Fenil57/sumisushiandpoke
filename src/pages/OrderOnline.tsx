@@ -133,33 +133,81 @@ export function OrderOnline() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
+  const [menuLoadError, setMenuLoadError] = useState<string | null>(null);
+  const [displayLimit, setDisplayLimit] = useState(10);
+  const ITEMS_PER_PAGE = 10;
+  const loaderRef = useRef<HTMLDivElement>(null);
 
   const { addToCart, totalItems, totalPrice } = useCart();
+  const isFallbackMenuEnabled = import.meta.env.DEV;
+
+  const categories: string[] = [
+    "All",
+    ...new Set<string>(menuItems.map((item) => item.category)),
+  ];
+
+  const filteredMenu =
+    activeCategory === "All"
+      ? menuItems
+      : menuItems.filter((item) => item.category === activeCategory);
 
   // Load menu from Firestore
   useEffect(() => {
     async function loadMenu() {
       try {
         setIsLoadingMenu(true);
+        setMenuLoadError(null);
         const items = await getMenuItems();
         if (items.length > 0) {
           setMenuItems(items);
-        } else {
+        } else if (isFallbackMenuEnabled) {
           console.warn("No menu items in Firestore, using fallback menu");
           setMenuItems(FALLBACK_MENU);
+        } else {
+          setMenuItems([]);
+          setMenuLoadError(t("order.menuUnavailableDesc"));
         }
       } catch (err: any) {
-        console.warn(
-          "Failed to load menu from Firestore, using fallback:",
-          err.message,
-        );
-        setMenuItems(FALLBACK_MENU);
+        if (isFallbackMenuEnabled) {
+          console.warn(
+            "Failed to load menu from Firestore, using fallback:",
+            err.message,
+          );
+          setMenuItems(FALLBACK_MENU);
+        } else {
+          console.warn("Failed to load menu from Firestore:", err.message);
+          setMenuItems([]);
+          setMenuLoadError(t("order.menuUnavailableDesc"));
+        }
       } finally {
         setIsLoadingMenu(false);
       }
     }
     loadMenu();
-  }, []);
+  }, [isFallbackMenuEnabled, t]);
+  useEffect(() => {
+    setDisplayLimit(ITEMS_PER_PAGE);
+  }, [activeCategory]);
+
+  // Infinite Scroll Observer
+  useEffect(() => {
+    if (isLoadingMenu) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && displayLimit < filteredMenu.length) {
+          setDisplayLimit((prev) => prev + ITEMS_PER_PAGE);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [isLoadingMenu, filteredMenu.length, displayLimit]);
 
   // Handle adding item from URL query parameter
   useEffect(() => {
@@ -186,15 +234,9 @@ export function OrderOnline() {
     }
   }, [isLoadingMenu, menuItems, location.search, navigate, addToCart, location.pathname]);
 
-  const categories: string[] = [
-    "All",
-    ...new Set<string>(menuItems.map((item) => item.category)),
-  ];
-
-  const filteredMenu =
-    activeCategory === "All"
-      ? menuItems
-      : menuItems.filter((item) => item.category === activeCategory);
+  // Pagination/Infinite scroll logic
+  const paginatedMenu = filteredMenu.slice(0, displayLimit);
+  const hasMore = displayLimit < filteredMenu.length;
 
   const getCategoryTranslation = (cat: string) => {
     const translations: Record<string, string> = {
@@ -333,20 +375,17 @@ export function OrderOnline() {
 
           {/* Menu Grid */}
           {isLoadingMenu ? (
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-x-8 gap-y-12">
-              {[...Array(6)].map((_, idx) => (
-                <div
-                  key={idx}
-                  className="flex flex-col sm:flex-row gap-6 p-4 -mx-4 animate-pulse"
-                >
-                  <div className="w-full sm:w-36 h-48 sm:h-36 bg-[var(--color-sumi)]/5 shrink-0" />
-                  <div className="flex-1 space-y-3 py-1">
-                    <div className="h-6 bg-[var(--color-sumi)]/5 w-3/4" />
-                    <div className="h-4 bg-[var(--color-sumi)]/5 w-full" />
-                    <div className="h-4 bg-[var(--color-sumi)]/5 w-1/2" />
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="w-12 h-12 border-2 border-[var(--color-shu)] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : filteredMenu.length === 0 ? (
+            <div className="border border-[var(--color-sumi)]/10 bg-white/70 p-8 md:p-12 text-center max-w-3xl mx-auto">
+              <h2 className="text-3xl font-serif font-bold text-[var(--color-sumi)] mb-4">
+                {t("order.menuUnavailableTitle")}
+              </h2>
+              <p className="text-[var(--color-sumi)]/65 leading-relaxed max-w-xl mx-auto">
+                {menuLoadError || t("order.menuUnavailableDesc")}
+              </p>
             </div>
           ) : (
             <motion.div
@@ -354,7 +393,7 @@ export function OrderOnline() {
               className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12"
             >
               <AnimatePresence mode="popLayout">
-                {filteredMenu.map((item, idx) => (
+                {paginatedMenu.map((item, idx) => (
                   <motion.div
                     layout
                     initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -426,6 +465,13 @@ export function OrderOnline() {
                 ))}
               </AnimatePresence>
             </motion.div>
+          )}
+
+          {/* Infinite Scroll Trigger & Spinner */}
+          {!isLoadingMenu && hasMore && (
+            <div ref={loaderRef} className="mt-16 flex justify-center py-8">
+              <div className="w-10 h-10 border-2 border-[var(--color-shu)] border-t-transparent rounded-full animate-spin" />
+            </div>
           )}
         </div>
       </motion.div>

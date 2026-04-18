@@ -57,6 +57,36 @@ export function Footer() {
     },
   ];
 
+  const renderPolicyLink = (
+    href: string,
+    label: string,
+    fallbackPath: string,
+  ) => {
+    const resolvedHref = href?.trim() || fallbackPath;
+
+    if (resolvedHref.startsWith("/")) {
+      return (
+        <Link
+          to={resolvedHref}
+          className="hover:text-[#f9f6f0] transition-colors cursor-pointer"
+        >
+          {label}
+        </Link>
+      );
+    }
+
+    return (
+      <a
+        href={resolvedHref}
+        target="_blank"
+        rel="noreferrer"
+        className="hover:text-[#f9f6f0] transition-colors cursor-pointer"
+      >
+        {label}
+      </a>
+    );
+  };
+
   return (
     <footer className="relative bg-[#1c1c1c] text-[var(--color-washi)] overflow-hidden group">
       <div className="absolute inset-0 z-0 overflow-hidden opacity-25 grayscale">
@@ -74,7 +104,7 @@ export function Footer() {
             <Link to="/" className="mb-6 block">
               <BrandLogo
                 imageClassName="h-14 w-14 object-contain"
-                textClassName="text-lg font-bold tracking-[0.14em] text-[var(--color-washi)]"
+                textClassName="text-base font-bold tracking-[0.14em] text-[var(--color-washi)]"
                 subtextClassName="text-[10px] tracking-[0.22em] uppercase text-[var(--color-shu)]"
               />
             </Link>
@@ -204,34 +234,12 @@ export function Footer() {
             (c) {new Date().getFullYear()} {t("footer.rights")}
           </p>
           <div className="flex gap-6 mt-4 md:mt-0">
-            {settings.privacyPolicyUrl ? (
-              <a
-                href={settings.privacyPolicyUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-[#f9f6f0] transition-colors cursor-pointer"
-              >
-                {t("footer.privacy")}
-              </a>
-            ) : (
-              <span className="text-[#f9f6f0]/20 cursor-not-allowed">
-                {t("footer.privacy")}
-              </span>
+            {renderPolicyLink(
+              settings.privacyPolicyUrl,
+              t("footer.privacy"),
+              "/privacy",
             )}
-            {settings.termsUrl ? (
-              <a
-                href={settings.termsUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-[#f9f6f0] transition-colors cursor-pointer"
-              >
-                {t("footer.terms")}
-              </a>
-            ) : (
-              <span className="text-[#f9f6f0]/20 cursor-not-allowed">
-                {t("footer.terms")}
-              </span>
-            )}
+            {renderPolicyLink(settings.termsUrl, t("footer.terms"), "/terms")}
           </div>
         </div>
       </div>

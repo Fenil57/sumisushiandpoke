@@ -1,4 +1,4 @@
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cors from 'cors';
@@ -28,6 +28,8 @@ const RESERVATIONS_COLLECTION = 'reservations';
 const MENU_COLLECTION = 'menu_items';
 const PENDING_CHECKOUTS_COLLECTION = 'pending_checkouts';
 const SETTINGS_DOC_PATH = 'settings/general';
+const RESERVATION_TIME_ZONE = 'Europe/Helsinki';
+const RESERVATION_EDIT_CUTOFF_MINUTES = 240;
 const FLATPAY_CHECKOUT_API_BASE_URL = 'https://checkout-api.frisbii.com/v1';
 const FLATPAY_API_BASE_URL = 'https://api.frisbii.com/v1';
 const FLATPAY_FALLBACK_CHECKOUT_URL = 'https://checkout.reepay.com/#/session/';
@@ -73,6 +75,7 @@ const checkoutLimiter = rateLimit({
 });
 
 type OrderType = 'delivery' | 'pickup';
+type ReservationStatus = 'pending' | 'confirmed' | 'cancelled';
 type PendingCheckoutStatus =
   | 'creating_session'
   | 'payment_pending'
@@ -174,6 +177,49 @@ interface CheckoutSyncResult {
     | 'missing_payment';
   orderId?: string;
   paymentState?: string;
+}
+
+interface CreatedOrderResult {
+  orderId: string;
+}
+
+interface ReservationRecord {
+  customer_info: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  date: string;
+  time: string;
+  guests: number;
+  special_requests: string;
+  status: ReservationStatus;
+  manage_token_hash: string;
+  customer_edit_count?: number;
+  last_customer_action_at?: Timestamp;
+  cancelled_at?: Timestamp;
+  cancelled_by?: 'customer' | 'admin';
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+interface ReservationEmailInput {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  date: string;
+  time: string;
+  guests: number;
+  specialRequests?: string;
+  status?: ReservationStatus;
+}
+
+interface ReservationSelfServiceState {
+  canManage: boolean;
+  canEdit: boolean;
+  canCancel: boolean;
+  reason?: string;
 }
 
 function isAllowedOrigin(origin: string): boolean {
@@ -355,6 +401,217 @@ function secureCompare(left: string, right: string): boolean {
   }
 
   return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function createReservationManageToken(): string {
+  return randomBytes(32).toString('hex');
+}
+
+function hashReservationManageToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function getReservationManageUrl(
+  reservationId: string,
+  manageToken: string,
+  req?: express.Request,
+): string {
+  const baseUrl = req ? getPublicAppBaseUrl(req) : process.env.APP_BASE_URL?.trim() || 'http://localhost:3000';
+  const params = new URLSearchParams({
+    id: reservationId,
+    token: manageToken,
+  });
+
+  return `${baseUrl.replace(/\/+$/, '')}/reservations/manage?${params.toString()}`;
+}
+
+function isValidReservationDate(date: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return false;
+  }
+
+  const [year, month, day] = date.split('-').map((part) => parseInt(part, 10));
+  const normalized = new Date(Date.UTC(year, month - 1, day));
+  return (
+    normalized.getUTCFullYear() === year &&
+    normalized.getUTCMonth() === month - 1 &&
+    normalized.getUTCDate() === day
+  );
+}
+
+function isValidReservationTime(time: string): boolean {
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    return false;
+  }
+
+  const [hours, minutes] = time.split(':').map((part) => parseInt(part, 10));
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+}
+
+function toReservationWallClockMillis(date: string, time: string): number {
+  if (!isValidReservationDate(date) || !isValidReservationTime(time)) {
+    return Number.NaN;
+  }
+
+  const [year, month, day] = date.split('-').map((part) => parseInt(part, 10));
+  const [hours, minutes] = time.split(':').map((part) => parseInt(part, 10));
+  return Date.UTC(year, month - 1, day, hours, minutes, 0, 0);
+}
+
+function getCurrentWallClockMillis(timeZone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const getPart = (type: string) =>
+    parseInt(parts.find((entry) => entry.type === type)?.value || '0', 10);
+
+  return Date.UTC(
+    getPart('year'),
+    getPart('month') - 1,
+    getPart('day'),
+    getPart('hour'),
+    getPart('minute'),
+    getPart('second'),
+    0,
+  );
+}
+
+function getReservationMinutesUntil(date: string, time: string): number {
+  const reservationMillis = toReservationWallClockMillis(date, time);
+  if (Number.isNaN(reservationMillis)) {
+    return Number.NaN;
+  }
+
+  const nowMillis = getCurrentWallClockMillis(RESERVATION_TIME_ZONE);
+  return Math.floor((reservationMillis - nowMillis) / 60000);
+}
+
+function validateReservationSchedule(date: string, time: string): string | null {
+  if (!isValidReservationDate(date)) {
+    return 'Please choose a valid reservation date.';
+  }
+
+  if (!isValidReservationTime(time)) {
+    return 'Please choose a valid reservation time.';
+  }
+
+  if (getReservationMinutesUntil(date, time) <= 0) {
+    return 'Please choose a reservation time in the future.';
+  }
+
+  return null;
+}
+
+function getReservationSelfServiceState(
+  reservation: Pick<ReservationRecord, 'status' | 'date' | 'time'>,
+): ReservationSelfServiceState {
+  if (reservation.status === 'cancelled') {
+    return {
+      canManage: false,
+      canEdit: false,
+      canCancel: false,
+      reason: 'This reservation has already been cancelled.',
+    };
+  }
+
+  const minutesUntilReservation = getReservationMinutesUntil(reservation.date, reservation.time);
+
+  if (Number.isNaN(minutesUntilReservation) || minutesUntilReservation <= 0) {
+    return {
+      canManage: false,
+      canEdit: false,
+      canCancel: false,
+      reason: 'This reservation time has already passed.',
+    };
+  }
+
+  if (minutesUntilReservation <= RESERVATION_EDIT_CUTOFF_MINUTES) {
+    return {
+      canManage: true,
+      canEdit: false,
+      canCancel: true,
+      reason: `Online edits close ${Math.floor(RESERVATION_EDIT_CUTOFF_MINUTES / 60)} hours before the reservation time. Please call the restaurant for changes.`,
+    };
+  }
+
+  return {
+    canManage: true,
+    canEdit: true,
+    canCancel: true,
+  };
+}
+
+function serializeManagedReservation(
+  reservationId: string,
+  reservation: ReservationRecord,
+  settings?: { contactPhone?: string },
+) {
+  const selfService = getReservationSelfServiceState(reservation);
+
+  return {
+    reservation: {
+      id: reservationId,
+      customerName: reservation.customer_info.name,
+      customerEmail: reservation.customer_info.email,
+      customerPhone: reservation.customer_info.phone,
+      date: reservation.date,
+      time: reservation.time,
+      guests: reservation.guests,
+      specialRequests: reservation.special_requests || '',
+      status: reservation.status,
+      createdAt: reservation.created_at?.toDate?.()?.toISOString?.() || null,
+      updatedAt: reservation.updated_at?.toDate?.()?.toISOString?.() || null,
+    },
+    permissions: {
+      ...selfService,
+      contactPhone: settings?.contactPhone || '044 2479393',
+      editCutoffHours: Math.floor(RESERVATION_EDIT_CUTOFF_MINUTES / 60),
+    },
+  };
+}
+
+async function getManagedReservation(
+  reservationIdInput: unknown,
+  manageTokenInput: unknown,
+): Promise<{ ref: FirebaseFirestore.DocumentReference; reservationId: string; reservation: ReservationRecord }> {
+  const reservationId = sanitizeString(reservationIdInput, 128);
+  const manageToken = sanitizeString(manageTokenInput, 256);
+
+  if (!reservationId || !manageToken) {
+    const error = new Error('Missing reservation link details.');
+    (error as Error & { status?: number }).status = 400;
+    throw error;
+  }
+
+  const db = requireAdminDb();
+  const ref = db.collection(RESERVATIONS_COLLECTION).doc(reservationId);
+  const snapshot = await ref.get();
+
+  if (!snapshot.exists) {
+    const error = new Error('Reservation not found or the manage link is invalid.');
+    (error as Error & { status?: number }).status = 404;
+    throw error;
+  }
+
+  const reservation = snapshot.data() as ReservationRecord;
+  const hashedToken = hashReservationManageToken(manageToken);
+
+  if (!reservation.manage_token_hash || !secureCompare(hashedToken, reservation.manage_token_hash)) {
+    const error = new Error('Reservation not found or the manage link is invalid.');
+    (error as Error & { status?: number }).status = 404;
+    throw error;
+  }
+
+  return { ref, reservationId, reservation };
 }
 
 // Regex for Finnish address validation
@@ -694,6 +951,66 @@ async function validateCheckoutPayload(payload: {
   };
 }
 
+async function createUnpaidOrder(
+  checkout: ValidatedCheckout,
+  req?: express.Request,
+): Promise<CreatedOrderResult> {
+  const db = requireAdminDb();
+  const orderRef = db.collection(ORDERS_COLLECTION).doc();
+  const now = Timestamp.now();
+
+  await orderRef.set({
+    customer_info: {
+      name: checkout.customerInfo.name,
+      phone: checkout.customerInfo.phone,
+      email: checkout.customerInfo.email,
+      address:
+        checkout.orderType === 'delivery'
+          ? checkout.customerInfo.matched_address ||
+            checkout.customerInfo.address ||
+            ''
+          : undefined,
+    },
+    items: checkout.items,
+    total_amount: checkout.subtotal,
+    delivery_fee: checkout.deliveryFee,
+    order_type: checkout.orderType,
+    status: 'pending',
+    payment_status: 'unpaid',
+    delivery_distance_meters: checkout.deliveryDistanceMeters,
+    created_at: now,
+    updated_at: now,
+  });
+
+  try {
+    await sendOrderNotificationEmail(
+      {
+        orderId: orderRef.id,
+        customerName: checkout.customerInfo.name,
+        customerPhone: checkout.customerInfo.phone,
+        customerEmail: checkout.customerInfo.email,
+        customerAddress:
+          checkout.orderType === 'delivery'
+            ? checkout.customerInfo.matched_address ||
+              checkout.customerInfo.address ||
+              ''
+            : '',
+        orderType: checkout.orderType,
+        items: checkout.items,
+        subtotal: checkout.subtotal,
+        deliveryFee: checkout.deliveryFee,
+        total: checkout.total,
+        deliveryDistanceMeters: checkout.deliveryDistanceMeters,
+      },
+      req,
+    );
+  } catch (error: any) {
+    console.error('Failed to send order notification email:', error.message);
+  }
+
+  return { orderId: orderRef.id };
+}
+
 async function createFlatpayChargeSession(params: {
   handle: string;
   req: express.Request;
@@ -923,18 +1240,34 @@ async function sendOrderNotificationEmail(
   });
 }
 
+function buildReservationStatusLabel(status?: ReservationStatus): string {
+  if (!status) {
+    return 'Pending';
+  }
+
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function buildReservationDetailsHtml(reservation: ReservationEmailInput): string {
+  return `
+    <div style="margin-bottom:20px;">
+      <p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Date:</strong> <span style="color:#e8e0d4;">${reservation.date}</span></p>
+      <p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Time:</strong> <span style="color:#e8e0d4;">${reservation.time}</span></p>
+      <p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Guests:</strong> <span style="color:#e8e0d4;">${reservation.guests}</span></p>
+      ${reservation.status ? `<p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Status:</strong> <span style="color:#e8e0d4;">${buildReservationStatusLabel(reservation.status)}</span></p>` : ''}
+      ${reservation.specialRequests ? `<p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Requests:</strong> <br/><span style="color:#e8e0d4;">${reservation.specialRequests}</span></p>` : ''}
+    </div>
+  `;
+}
+
 async function sendReservationNotificationEmail(
-  reservation: {
-    id: string;
-    customerName: string;
-    customerPhone: string;
-    customerEmail: string;
-    date: string;
-    time: string;
-    guests: number;
-    specialRequests?: string;
-  },
+  reservation: ReservationEmailInput,
   req?: express.Request,
+  options?: {
+    title?: string;
+    subject?: string;
+    footerMessage?: string;
+  },
 ) {
   if (!emailTransporter) {
     return;
@@ -946,12 +1279,17 @@ async function sendReservationNotificationEmail(
   }
 
   const adminUrl = getAdminDashboardUrl(req);
+  const title = options?.title || 'New Reservation Request';
+  const subject =
+    options?.subject ||
+    `New Reservation: ${reservation.date} at ${reservation.time} for ${reservation.guests} guests`;
+  const footerMessage = options?.footerMessage || 'Open the Admin Dashboard to manage this reservation.';
 
   const html = `
     <div style="max-width:500px;margin:0 auto;background:#1a1a1a;color:#e8e0d4;font-family:Georgia,serif;">
       <div style="background:#c23b22;padding:20px 24px;">
         <h1 style="margin:0;font-size:20px;letter-spacing:3px;color:#e8e0d4;">SUMI <span style="font-weight:300;">ADMIN</span></h1>
-        <p style="margin:4px 0 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.7;">New Reservation Request</p>
+        <p style="margin:4px 0 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.7;">${title}</p>
       </div>
 
       <div style="padding:24px;">
@@ -964,17 +1302,13 @@ async function sendReservationNotificationEmail(
           </p>
         </div>
 
-        <div style="margin-bottom:20px;">
-          <p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Date:</strong> <span style="color:#e8e0d4;">${reservation.date}</span></p>
-          <p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Time:</strong> <span style="color:#e8e0d4;">${reservation.time}</span></p>
-          <p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Guests:</strong> <span style="color:#e8e0d4;">${reservation.guests}</span></p>
-          ${reservation.specialRequests ? `<p style="margin:0 0 8px;font-size:14px;color:#888;"><strong>Requests:</strong> <br/><span style="color:#e8e0d4;">${reservation.specialRequests}</span></p>` : ''}
-        </div>
+        ${buildReservationDetailsHtml(reservation)}
       </div>
 
       <div style="padding:16px 24px;background:#111;text-align:center;">
         <p style="margin:0;font-size:11px;color:#555;">
-          Open the <a href="${adminUrl}" style="color:#c23b22;text-decoration:none;">Admin Dashboard</a> to manage this reservation.
+          ${footerMessage}
+          <a href="${adminUrl}" style="color:#c23b22;text-decoration:none;">Admin Dashboard</a>.
         </p>
       </div>
     </div>
@@ -983,52 +1317,64 @@ async function sendReservationNotificationEmail(
   await emailTransporter.sendMail({
     from: `"Sumi Sushi and Poke" <${process.env.SMTP_USER}>`,
     to: notificationEmail,
-    subject: `New Reservation: ${reservation.date} at ${reservation.time} for ${reservation.guests} guests`,
+    subject,
     html,
   });
 }
 
 async function sendReservationConfirmationEmail(
-  reservation: {
-    customerName: string;
-    customerEmail: string;
-    date: string;
-    time: string;
-    guests: number;
-    specialRequests?: string;
+  reservation: ReservationEmailInput,
+  settings?: any,
+  options?: {
+    subject?: string;
+    title?: string;
+    body?: string;
+    helperText?: string;
+    manageUrl?: string;
+    ctaLabel?: string;
   },
-  settings?: any
 ) {
   if (!emailTransporter) return;
 
   const restaurantName = settings?.restaurantName || 'Sumi Sushi and Poke';
   const contactPhone = settings?.contactPhone || '044 2479393';
   const address = settings?.address || 'Kuskinkatu 3, 20780 Kaarina';
+  const title = options?.title || 'Reservation Received';
+  const subject =
+    options?.subject || `Reservation Request Received - ${restaurantName} (${reservation.date})`;
+  const body =
+    options?.body ||
+    `Thank you for choosing ${restaurantName}. We have received your reservation request and are currently processing it. You will receive a final confirmation shortly once our staff has verified the table availability.`;
+  const helperText =
+    options?.helperText ||
+    `You can update or cancel this reservation using the manage button below. If the reservation is close, please call us at ${contactPhone}.`;
 
   const html = `
     <div style="max-width:500px;margin:0 auto;background:#1a1a1a;color:#e8e0d4;font-family:Georgia,serif;padding:0;border:1px solid #333;">
       <div style="background:#c23b22;padding:40px 24px;text-align:center;">
         <h1 style="margin:0;font-size:24px;letter-spacing:4px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
-        <p style="margin:8px 0 0;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">Reservation Received</p>
+        <p style="margin:8px 0 0;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">${title}</p>
       </div>
 
       <div style="padding:40px 32px;">
         <p style="font-size:18px;margin-bottom:24px;">Hello ${reservation.customerName},</p>
         <p style="line-height:1.6;color:#ccc;margin-bottom:32px;">
-          Thank you for choosing ${restaurantName}. We have received your reservation request and are currently processing it. 
-          You will receive a final confirmation shortly once our staff has verified the table availability.
+          ${body}
         </p>
         <div style="background:#111;padding:24px;border-radius:4px;margin-bottom:32px;">
           <h3 style="margin:0 0 16px;font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#c23b22;">Your Request Details</h3>
+          <p style="margin:0 0 8px;font-size:14px;"><span style="color:#888;">Reference:</span> ${reservation.id.slice(-8).toUpperCase()}</p>
           <p style="margin:0 0 8px;font-size:14px;"><span style="color:#888;">Date:</span> ${reservation.date}</p>
           <p style="margin:0 0 8px;font-size:14px;"><span style="color:#888;">Time:</span> ${reservation.time}</p>
           <p style="margin:0 0 8px;font-size:14px;"><span style="color:#888;">Guests:</span> ${reservation.guests}</p>
+          ${reservation.status ? `<p style="margin:0 0 8px;font-size:14px;"><span style="color:#888;">Status:</span> ${buildReservationStatusLabel(reservation.status)}</p>` : ''}
           ${reservation.specialRequests ? `<p style="margin:16px 0 0;font-size:13px;color:#888;font-style:italic;">"${reservation.specialRequests}"</p>` : ''}
         </div>
 
         <p style="font-size:13px;color:#888;line-height:1.6;">
-          If you need to make any changes or cancel your request, please give us a call at ${contactPhone}.
+          ${helperText}
         </p>
+        ${options?.manageUrl ? `<div style="margin-top:24px;"><a href="${options.manageUrl}" style="display:inline-block;padding:12px 18px;background:#c23b22;color:#fff;text-decoration:none;text-transform:uppercase;letter-spacing:1px;font-size:12px;">${options.ctaLabel || 'Manage Reservation'}</a></div>` : ''}
       </div>
 
       <div style="background:#111;padding:24px;text-align:center;border-top:1px solid #333;">
@@ -1042,7 +1388,7 @@ async function sendReservationConfirmationEmail(
   await emailTransporter.sendMail({
     from: `"${restaurantName}" <${process.env.SMTP_USER}>`,
     to: reservation.customerEmail,
-    subject: `Reservation Request Received - ${restaurantName} (${reservation.date})`,
+    subject,
     html,
   });
 }
@@ -1292,6 +1638,29 @@ app.post('/api/flatpay/session', checkoutLimiter, async (req, res) => {
   }
 });
 
+app.post('/api/orders/manual', checkoutLimiter, async (req, res) => {
+  try {
+    requireAdminDb();
+
+    const checkout = await validateCheckoutPayload(req.body || {});
+    const createdOrder = await createUnpaidOrder(checkout, req);
+
+    res.json({
+      orderId: createdOrder.orderId,
+      amount: checkout.total,
+      subtotal: checkout.subtotal,
+      deliveryFee: checkout.deliveryFee,
+      paymentProvider: null,
+      paymentStatus: 'unpaid',
+    });
+  } catch (error: any) {
+    console.error('Error creating manual order:', error.message);
+    res.status(500).json({
+      error: error.message || 'We could not place your order. Please try again.',
+    });
+  }
+});
+
 app.get('/api/flatpay/verify', async (req, res) => {
   try {
     const handle = sanitizeString(req.query.invoice || req.query.handle);
@@ -1424,10 +1793,18 @@ app.post('/api/reservations', reservationLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Please provide a valid phone number.' });
     }
 
+    const scheduleError = validateReservationSchedule(date, time);
+    if (scheduleError) {
+      return res.status(400).json({ error: scheduleError });
+    }
+
     const reservationRef = db.collection(RESERVATIONS_COLLECTION).doc();
     const reservationId = reservationRef.id;
+    const manageToken = createReservationManageToken();
+    const manageUrl = getReservationManageUrl(reservationId, manageToken, req);
+    const now = Timestamp.now();
 
-    const reservationData = {
+    const reservationData: ReservationRecord = {
       customer_info: {
         name,
         email,
@@ -1438,45 +1815,280 @@ app.post('/api/reservations', reservationLimiter, async (req, res) => {
       guests,
       special_requests: specialRequests,
       status: 'pending', // pending, confirmed, cancelled
-      created_at: Timestamp.now(),
-      updated_at: Timestamp.now(),
+      manage_token_hash: hashReservationManageToken(manageToken),
+      customer_edit_count: 0,
+      created_at: now,
+      updated_at: now,
     };
 
     await reservationRef.set(reservationData);
 
     const settings = await getSiteSettings();
+    const reservationEmailData: ReservationEmailInput = {
+      id: reservationId,
+      customerName: name,
+      customerPhone: phone,
+      customerEmail: email,
+      date,
+      time,
+      guests,
+      specialRequests,
+      status: 'pending',
+    };
 
     // Send emails in background
     sendReservationNotificationEmail(
-      {
-        id: reservationId,
-        customerName: name,
-        customerPhone: phone,
-        customerEmail: email,
-        date,
-        time,
-        guests,
-        specialRequests,
-      },
+      reservationEmailData,
       req,
+      {
+        footerMessage: 'Open the ',
+      },
     ).catch((err) => console.error('Failed to send reservation notification email:', err.message));
 
     sendReservationConfirmationEmail(
-      {
-        customerName: name,
-        customerEmail: email,
-        date,
-        time,
-        guests,
-        specialRequests,
-      },
+      reservationEmailData,
       settings,
+      {
+        manageUrl,
+      },
     ).catch((err) => console.error('Failed to send reservation confirmation email:', err.message));
 
-    res.json({ success: true, id: reservationId });
+    res.json({ success: true, id: reservationId, manageUrl });
   } catch (error: any) {
     console.error('Error creating reservation:', error.message);
     res.status(500).json({ error: 'We could not submit your reservation. Please try again or call us.' });
+  }
+});
+
+app.get('/api/reservations/:reservationId/manage', async (req, res) => {
+  try {
+    const managedReservation = await getManagedReservation(
+      req.params.reservationId,
+      req.query.token,
+    );
+    const settings = await getSiteSettings();
+
+    res.json(
+      serializeManagedReservation(
+        managedReservation.reservationId,
+        managedReservation.reservation,
+        settings,
+      ),
+    );
+  } catch (error: any) {
+    const status = error?.status || 500;
+    if (status >= 500) {
+      console.error('Error loading managed reservation:', error.message);
+    }
+    res.status(status).json({
+      error: error.message || 'We could not load that reservation.',
+    });
+  }
+});
+
+app.patch('/api/reservations/:reservationId/manage', async (req, res) => {
+  try {
+    const managedReservation = await getManagedReservation(
+      req.params.reservationId,
+      req.body?.token,
+    );
+    const payload = req.body || {};
+    const nextDate = sanitizeString(payload.date);
+    const nextTime = sanitizeString(payload.time);
+    const nextGuests = parseInt(payload.guests, 10);
+    const nextSpecialRequests = sanitizeString(payload.specialRequests, 1000);
+
+    if (!nextDate || !nextTime || Number.isNaN(nextGuests) || nextGuests < 1) {
+      return res.status(400).json({ error: 'Please provide all required fields correctly.' });
+    }
+
+    const currentState = getReservationSelfServiceState(managedReservation.reservation);
+    if (!currentState.canEdit) {
+      return res.status(409).json({
+        error: currentState.reason || 'This reservation can no longer be edited online.',
+      });
+    }
+
+    const scheduleError = validateReservationSchedule(nextDate, nextTime);
+    if (scheduleError) {
+      return res.status(400).json({ error: scheduleError });
+    }
+
+    if (getReservationMinutesUntil(nextDate, nextTime) <= RESERVATION_EDIT_CUTOFF_MINUTES) {
+      return res.status(400).json({
+        error: `Online changes must be at least ${Math.floor(RESERVATION_EDIT_CUTOFF_MINUTES / 60)} hours in advance.`,
+      });
+    }
+
+    const updatedStatus: ReservationStatus =
+      managedReservation.reservation.status === 'confirmed' ? 'pending' : managedReservation.reservation.status;
+    const now = Timestamp.now();
+
+    await managedReservation.ref.set(
+      {
+        date: nextDate,
+        time: nextTime,
+        guests: nextGuests,
+        special_requests: nextSpecialRequests,
+        status: updatedStatus,
+        customer_edit_count: (managedReservation.reservation.customer_edit_count || 0) + 1,
+        last_customer_action_at: now,
+        updated_at: now,
+      },
+      { merge: true },
+    );
+
+    const updatedReservation: ReservationRecord = {
+      ...managedReservation.reservation,
+      date: nextDate,
+      time: nextTime,
+      guests: nextGuests,
+      special_requests: nextSpecialRequests,
+      status: updatedStatus,
+      customer_edit_count: (managedReservation.reservation.customer_edit_count || 0) + 1,
+      last_customer_action_at: now,
+      updated_at: now,
+    };
+    const settings = await getSiteSettings();
+    const manageUrl = getReservationManageUrl(
+      managedReservation.reservationId,
+      sanitizeString(req.body?.token, 256),
+      req,
+    );
+    const reservationEmailData: ReservationEmailInput = {
+      id: managedReservation.reservationId,
+      customerName: updatedReservation.customer_info.name,
+      customerPhone: updatedReservation.customer_info.phone,
+      customerEmail: updatedReservation.customer_info.email,
+      date: updatedReservation.date,
+      time: updatedReservation.time,
+      guests: updatedReservation.guests,
+      specialRequests: updatedReservation.special_requests,
+      status: updatedReservation.status,
+    };
+
+    sendReservationNotificationEmail(
+      reservationEmailData,
+      req,
+      {
+        title: 'Reservation Updated By Guest',
+        subject: `Reservation Updated: ${updatedReservation.date} at ${updatedReservation.time} for ${updatedReservation.guests} guests`,
+        footerMessage: 'Review this change in the ',
+      },
+    ).catch((err) => console.error('Failed to send reservation update notification email:', err.message));
+
+    sendReservationConfirmationEmail(
+      reservationEmailData,
+      settings,
+      {
+        subject: `Reservation Updated - ${settings?.restaurantName || 'Sumi Sushi and Poke'} (${updatedReservation.date})`,
+        title: 'Reservation Updated',
+        body:
+          updatedStatus === 'pending'
+            ? `We received your reservation changes and sent the updated request back to our team for review. We will confirm availability as soon as possible.`
+            : `Your reservation details have been updated successfully.`,
+        helperText:
+          updatedStatus === 'pending'
+            ? `Because the reservation was already confirmed, your update moved it back to pending review. You can still cancel it with the button below, or call us if you need immediate help.`
+            : `You can keep using the manage button below if you need to adjust or cancel this reservation.`,
+        manageUrl,
+        ctaLabel: 'View Reservation',
+      },
+    ).catch((err) => console.error('Failed to send reservation update confirmation email:', err.message));
+
+    res.json(
+      serializeManagedReservation(managedReservation.reservationId, updatedReservation, settings),
+    );
+  } catch (error: any) {
+    const status = error?.status || 500;
+    if (status >= 500) {
+      console.error('Error updating reservation:', error.message);
+    }
+    res.status(status).json({
+      error: error.message || 'We could not update that reservation.',
+    });
+  }
+});
+
+app.post('/api/reservations/:reservationId/cancel', async (req, res) => {
+  try {
+    const managedReservation = await getManagedReservation(
+      req.params.reservationId,
+      req.body?.token,
+    );
+    const currentState = getReservationSelfServiceState(managedReservation.reservation);
+
+    if (!currentState.canCancel) {
+      return res.status(409).json({
+        error: currentState.reason || 'This reservation can no longer be cancelled online.',
+      });
+    }
+
+    const now = Timestamp.now();
+    await managedReservation.ref.set(
+      {
+        status: 'cancelled',
+        cancelled_at: now,
+        cancelled_by: 'customer',
+        last_customer_action_at: now,
+        updated_at: now,
+      },
+      { merge: true },
+    );
+
+    const cancelledReservation: ReservationRecord = {
+      ...managedReservation.reservation,
+      status: 'cancelled',
+      cancelled_at: now,
+      cancelled_by: 'customer',
+      last_customer_action_at: now,
+      updated_at: now,
+    };
+    const settings = await getSiteSettings();
+    const reservationEmailData: ReservationEmailInput = {
+      id: managedReservation.reservationId,
+      customerName: cancelledReservation.customer_info.name,
+      customerPhone: cancelledReservation.customer_info.phone,
+      customerEmail: cancelledReservation.customer_info.email,
+      date: cancelledReservation.date,
+      time: cancelledReservation.time,
+      guests: cancelledReservation.guests,
+      specialRequests: cancelledReservation.special_requests,
+      status: cancelledReservation.status,
+    };
+
+    sendReservationNotificationEmail(
+      reservationEmailData,
+      req,
+      {
+        title: 'Reservation Cancelled By Guest',
+        subject: `Reservation Cancelled: ${cancelledReservation.date} at ${cancelledReservation.time} for ${cancelledReservation.guests} guests`,
+        footerMessage: 'Review this cancellation in the ',
+      },
+    ).catch((err) => console.error('Failed to send reservation cancellation notification email:', err.message));
+
+    sendReservationConfirmationEmail(
+      reservationEmailData,
+      settings,
+      {
+        subject: `Reservation Cancelled - ${settings?.restaurantName || 'Sumi Sushi and Poke'} (${cancelledReservation.date})`,
+        title: 'Reservation Cancelled',
+        body: `Your reservation has been cancelled. If this was a mistake, please contact the restaurant and we will do our best to help.`,
+        helperText: `No further action is needed. If you would like to book again, you can return to our reservations page anytime.`,
+      },
+    ).catch((err) => console.error('Failed to send reservation cancellation confirmation email:', err.message));
+
+    res.json(
+      serializeManagedReservation(managedReservation.reservationId, cancelledReservation, settings),
+    );
+  } catch (error: any) {
+    const status = error?.status || 500;
+    if (status >= 500) {
+      console.error('Error cancelling reservation:', error.message);
+    }
+    res.status(status).json({
+      error: error.message || 'We could not cancel that reservation.',
+    });
   }
 });
 

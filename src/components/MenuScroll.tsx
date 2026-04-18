@@ -5,65 +5,17 @@ import { useTranslation } from "react-i18next";
 import { getMenuItems, type MenuItem } from "../services/menuService";
 import { useCart } from "../context/CartContext";
 
-const fallbackItems: MenuItem[] = [
-  {
-    id: "dragon-maki",
-    name: "Dragon Maki",
-    description:
-      "Surimi, cucumber, avocado, salmon, tuna. Large roll - 8 pcs.",
-    price: 11.9,
-    category: "Sushi",
-    image_url:
-      "https://images.unsplash.com/photo-1617196034183-421b4917c92d?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-  },
-  {
-    id: "salmon-gl-maki",
-    name: "Salmon GL Maki",
-    description:
-      "Salmon, avocado, cucumber, grilled salmon, unagi sauce, spring onion.",
-    price: 11.9,
-    category: "Sushi",
-    image_url:
-      "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-  },
-  {
-    id: "raw-salmon-pesto-poke",
-    name: "Raw Salmon Pesto Poke",
-    description:
-      "Sushi rice, salmon pesto, carrot, avocado, edamame, mango, spicy mayo, eel sauce.",
-    price: 11.9,
-    category: "Poke Bowls",
-    image_url:
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-  },
-  {
-    id: "gyoza",
-    name: "Gyoza",
-    description:
-      "Fried chicken, vegetables, kimchi, choice of dip. Sizes: 5 pcs, 10 pcs, or 15 pcs.",
-    price: 5.9,
-    category: "Finger Foods",
-    image_url:
-      "https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-  },
-  {
-    id: "chicken-devil",
-    name: "Chicken Devil",
-    description:
-      "Marinated chicken, onion, tomato, bell pepper, garlic, spring onion, coriander, leeks.",
-    price: 13.9,
-    category: "Woks",
-    image_url:
-      "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-  },
-];
+
 
 function pickFeaturedItems(items: MenuItem[]): MenuItem[] {
+  // Primarily use the explicit is_featured flag
+  const explicitlyFeatured = items.filter(item => item.is_featured);
+  
+  if (explicitlyFeatured.length > 0) {
+    return explicitlyFeatured.slice(0, 5);
+  }
+
+  // Fallback to the old tag-based logic if no items are explicitly featured yet
   const featuredTags = new Set(["popular", "signature", "chef's choice"]);
   const taggedItems = items.filter((item) =>
     (item.tags || []).some((tag) => featuredTags.has(tag.toLowerCase())),
@@ -77,7 +29,7 @@ function pickFeaturedItems(items: MenuItem[]): MenuItem[] {
 
 export function MenuScroll() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [featuredItems, setFeaturedItems] = useState<MenuItem[]>(fallbackItems);
+  const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [addedItemId, setAddedItemId] = useState<string | null>(null);
   const { t } = useTranslation();
   const { addToCart, cart } = useCart();
@@ -98,8 +50,8 @@ export function MenuScroll() {
         const items = await getMenuItems();
         if (!isMounted || items.length === 0) return;
         setFeaturedItems(pickFeaturedItems(items));
-      } catch {
-        // Keep the homepage usable if Firestore is unavailable.
+      } catch (err) {
+        console.error("Failed to load featured items:", err);
       }
     }
 

@@ -236,13 +236,16 @@ export function AdminSettings() {
                 Privacy Policy URL
               </label>
               <input
-                type="url"
+                type="text"
                 name="privacyPolicyUrl"
                 value={formData.privacyPolicyUrl}
                 onChange={handleChange}
-                placeholder="https://yourdomain.com/privacy"
+                placeholder="/privacy or https://yourdomain.com/privacy"
                 className="w-full bg-[var(--color-washi)]/5 border border-[var(--color-washi)]/10 focus:ring-0 focus:border-[var(--color-shu)] rounded-sm p-3 text-sm text-[var(--color-washi)]"
               />
+              <p className="text-xs text-[var(--color-washi)]/40">
+                Use `/privacy` for the built-in page, or paste a full external URL.
+              </p>
             </div>
           </div>
 
@@ -251,13 +254,16 @@ export function AdminSettings() {
               Terms of Service URL
             </label>
             <input
-              type="url"
+              type="text"
               name="termsUrl"
               value={formData.termsUrl}
               onChange={handleChange}
-              placeholder="https://yourdomain.com/terms"
+              placeholder="/terms or https://yourdomain.com/terms"
               className="w-full bg-[var(--color-washi)]/5 border border-[var(--color-washi)]/10 focus:ring-0 focus:border-[var(--color-shu)] rounded-sm p-3 text-sm text-[var(--color-washi)]"
             />
+            <p className="text-xs text-[var(--color-washi)]/40">
+              Use `/terms` for the built-in page, or paste a full external URL.
+            </p>
           </div>
         </div>
 

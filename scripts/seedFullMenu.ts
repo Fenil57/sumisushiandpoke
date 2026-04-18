@@ -11,7 +11,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 
-dotenv.config();
+dotenv.config({ path: ['.env.local', '.env'] });
 
 const firebaseConfig = {
   apiKey: process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY,

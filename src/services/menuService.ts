@@ -19,6 +19,7 @@ export interface MenuItem {
   category: string;
   image_url: string;
   is_available: boolean;
+  is_featured?: boolean;
   tags?: string[];
   sort_order?: number;
 }

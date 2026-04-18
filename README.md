@@ -4,13 +4,12 @@ Restaurant website with:
 
 - Public home page
 - Online ordering flow
-- Flatpay hosted checkout with server-side payment verification
+- Temporary manual checkout flow with optional Flatpay integration kept in code
 - Admin dashboard for orders, menu, and basic site settings
 
 Project guides:
 
 - Client handover guide: [CLIENT_PROJECT_GUIDE.md](./CLIENT_PROJECT_GUIDE.md)
-- Delivery and handoff checklist: [PROJECT_COMPLETION_CHECKLIST.md](./PROJECT_COMPLETION_CHECKLIST.md)
 - Technical backend notes: [BACKEND_REQUIREMENTS.md](./BACKEND_REQUIREMENTS.md)
 
 Basic local commands:
@@ -37,6 +36,7 @@ Payment-related setup now needs:
 Notes:
 
 - `VITE_ENABLE_MENU_IMAGE_UPLOAD=false` keeps the future admin upload control visible but disabled until Firebase Storage is enabled.
+- `VITE_ENABLE_ONLINE_PAYMENT=false` keeps checkout in manual unpaid-order mode until Flatpay is re-enabled.
 - `VITE_API_BASE_URL` lets the frontend call the backend directly when you are not using the Vite dev proxy.
 - The canonical brand asset is `src/assets/images/logo.png`.
 - `NLS_API_KEY` enables Finnish delivery-address validation and the 5 km free-delivery check.

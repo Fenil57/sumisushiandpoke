@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown, Calendar, Clock, Users, MessageSquare, AlertCircle } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
 import successIllustration from '../assets/reservation-success.png';
+import { getApiUrl, readApiJson } from '../lib/api';
+import { RESERVATION_TIME_SLOTS } from '../constants/reservations';
 
 export function Reservations() {
   const { t } = useTranslation();
@@ -21,12 +23,7 @@ export function Reservations() {
   // Submission state
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-
-  // Available Time Slots
-  const timeSlots = [
-    "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
-    "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00"
-  ];
+  const [manageUrl, setManageUrl] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +33,7 @@ export function Reservations() {
     setErrorMsg('');
 
     try {
-      const response = await fetch('/api/reservations', {
+      const response = await fetch(getApiUrl('/api/reservations'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -50,12 +47,12 @@ export function Reservations() {
         })
       });
 
-      const data = await response.json();
+      const data = await readApiJson<{ success: boolean; id: string; manageUrl?: string }>(
+        response,
+        'Failed to submit reservation.',
+      );
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit reservation.');
-      }
-
+      setManageUrl(data.manageUrl || '');
       setStatus('success');
     } catch (err: any) {
       console.error(err);
@@ -73,6 +70,7 @@ export function Reservations() {
     setGuests('2');
     setSpecialRequests('');
     setStatus('idle');
+    setManageUrl('');
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -164,6 +162,18 @@ export function Reservations() {
                 <h3 className="text-4xl font-serif text-[var(--color-washi)] mb-4">{t('reservations.successTitle')}</h3>
                 <p className="text-[var(--color-washi)]/60 max-w-md mx-auto mb-12 text-lg leading-relaxed font-light">
                   {t('reservations.successDesc')}
+                </p>
+                {manageUrl && (
+                  <a
+                    href={manageUrl}
+                    className="group relative mb-4 inline-flex px-10 py-4 border border-[var(--color-shu)]/50 bg-[var(--color-shu)] text-[var(--color-washi)] text-[10px] tracking-[0.3em] uppercase font-bold transition-all overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-[#a02020] translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                    <span className="relative z-10">{t('reservations.manageLinkButton')}</span>
+                  </a>
+                )}
+                <p className="text-[var(--color-washi)]/45 max-w-md mx-auto mb-8 text-sm leading-relaxed">
+                  {t('reservations.manageLinkHint')}
                 </p>
                 <button
                   onClick={resetForm}
@@ -272,8 +282,8 @@ export function Reservations() {
                         onChange={(e) => setTime(e.target.value)}
                         className="w-full bg-transparent border-b border-[var(--color-washi)]/10 px-0 py-4 text-[var(--color-washi)] focus:outline-none focus:border-[var(--color-shu)] transition-all appearance-none cursor-pointer text-lg relative z-10 no-highlight"
                       >
-                        <option value="" disabled className="bg-[var(--color-sumi)]">Select time</option>
-                        {timeSlots.map(slot => <option key={slot} value={slot} className="bg-[var(--color-sumi)]">{slot}</option>)}
+                        <option value="" disabled className="bg-[var(--color-sumi)]">{t('reservations.formTimePlaceholder')}</option>
+                        {RESERVATION_TIME_SLOTS.map((slot) => <option key={slot} value={slot} className="bg-[var(--color-sumi)]">{slot}</option>)}
                       </select>
                       <ChevronDown size={20} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/20 group-hover:text-[var(--color-shu)] transition-colors pointer-events-none z-0" />
                     </div>
@@ -293,10 +303,10 @@ export function Reservations() {
                       >
                         {[...Array(12)].map((_, i) => (
                            <option key={i+1} value={i+1} className="bg-[var(--color-sumi)]">
-                             {i+1} {i+1 === 1 ? 'Guest' : 'Guests'}
+                             {i+1} {i+1 === 1 ? t('reservations.guestSingle') : t('reservations.guestPlural')}
                            </option>
                         ))}
-                        <option value="13" className="bg-[var(--color-sumi)]">More than 12 (Clarify in requests)</option>
+                        <option value="13" className="bg-[var(--color-sumi)]">{t('reservations.moreThanTwelve')}</option>
                       </select>
                       <Users size={20} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/20 group-hover:text-[var(--color-shu)] transition-colors pointer-events-none z-0" />
                     </div>
@@ -336,7 +346,7 @@ export function Reservations() {
                     </span>
                   </button>
                   <p className="mt-6 text-[var(--color-washi)]/30 text-[10px] tracking-widest uppercase font-bold italic">
-                    All tables are held for 15 minutes past reservation time.
+                    {t('reservations.tableHoldNote')}
                   </p>
                 </div>
               </motion.form>

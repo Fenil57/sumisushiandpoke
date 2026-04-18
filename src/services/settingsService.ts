@@ -38,8 +38,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   instagramUrl: '',
   facebookUrl: '',
   twitterUrl: '',
-  privacyPolicyUrl: '',
-  termsUrl: '',
+  privacyPolicyUrl: '/privacy',
+  termsUrl: '/terms',
   weekdayHours: '10:00 - 22:00',
   weekdayBuffetHours: '10:00 - 15:00',
   weekdayBuffetPrice: 12.9,
@@ -64,6 +64,14 @@ export async function getSettings(): Promise<SiteSettings> {
       // Preserve the new delivery rule when older projects still have the previous default saved.
       if (settings.deliveryFee === 3.9) {
         settings.deliveryFee = DEFAULT_SETTINGS.deliveryFee;
+      }
+
+      if (!settings.privacyPolicyUrl?.trim()) {
+        settings.privacyPolicyUrl = DEFAULT_SETTINGS.privacyPolicyUrl;
+      }
+
+      if (!settings.termsUrl?.trim()) {
+        settings.termsUrl = DEFAULT_SETTINGS.termsUrl;
       }
 
       return settings;

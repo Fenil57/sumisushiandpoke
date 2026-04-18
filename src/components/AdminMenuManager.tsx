@@ -23,6 +23,7 @@ const EMPTY_ITEM: MenuItem = {
   category: 'Sushi',
   image_url: '',
   is_available: true,
+  is_featured: false,
   tags: [],
   sort_order: 0,
 };
@@ -43,6 +44,9 @@ export function AdminMenuManager() {
   const [tagInput, setTagInput] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [displayLimit, setDisplayLimit] = useState(20);
+  const ITEMS_PER_PAGE = 20;
+  const loaderRef = React.useRef<HTMLDivElement>(null);
 
   // Load all menu items (including unavailable)
   const loadItems = async () => {
@@ -202,11 +206,39 @@ export function AdminMenuManager() {
     return matchesSearch && matchesCategory;
   });
 
+  useEffect(() => {
+    setDisplayLimit(ITEMS_PER_PAGE);
+  }, [searchQuery, filterCategory]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && displayLimit < filtered.length) {
+          setDisplayLimit(prev => prev + ITEMS_PER_PAGE);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (loaderRef.current) observer.observe(loaderRef.current);
+    return () => observer.disconnect();
+  }, [isLoading, filtered.length, displayLimit]);
+
   // Group by category for display
   const groupedItems: Record<string, MenuItem[]> = {};
   for (const item of filtered) {
     if (!groupedItems[item.category]) groupedItems[item.category] = [];
     groupedItems[item.category].push(item);
+  }
+
+  const paginatedItems = filtered.slice(0, displayLimit);
+  const hasMore = displayLimit < filtered.length;
+  
+  // Update grouped items to only include paginated items
+  const paginatedGroupedItems: Record<string, MenuItem[]> = {};
+  for (const item of paginatedItems) {
+    if (!paginatedGroupedItems[item.category]) paginatedGroupedItems[item.category] = [];
+    paginatedGroupedItems[item.category].push(item);
   }
 
   const categoryStats = CATEGORIES.map(cat => ({
@@ -296,8 +328,7 @@ export function AdminMenuManager() {
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
             <div className="text-center">
-              <div className="w-10 h-10 border-2 border-[var(--color-shu)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-[var(--color-washi)]/40 text-xs tracking-[0.2em] uppercase">Loading menu...</p>
+              <div className="w-10 h-10 border-2 border-[var(--color-shu)] border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
           </div>
         ) : filtered.length === 0 ? (
@@ -311,7 +342,7 @@ export function AdminMenuManager() {
             </div>
           </div>
         ) : (
-          Object.entries(groupedItems).map(([category, categoryItems]) => (
+          Object.entries(paginatedGroupedItems).map(([category, categoryItems]) => (
             <div key={category} className="mb-8">
               {/* Category Header */}
               <div className="flex items-center gap-3 mb-4">
@@ -433,6 +464,13 @@ export function AdminMenuManager() {
               </div>
             </div>
           ))
+        )}
+
+        {/* Infinite Scroll Trigger & Spinner */}
+        {!isLoading && hasMore && (
+          <div ref={loaderRef} className="mt-8 flex justify-center py-4">
+            <div className="w-10 h-10 border-2 border-[var(--color-shu)] border-t-transparent rounded-full animate-spin" />
+          </div>
         )}
       </div>
 
@@ -692,12 +730,39 @@ export function AdminMenuManager() {
                   </div>
                   <button
                     onClick={() => setEditItem(prev => ({ ...prev, is_available: !prev.is_available }))}
-                    className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                    className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
                       editItem.is_available ? 'bg-[var(--color-shu)]' : 'bg-[var(--color-washi)]/10'
                     }`}
                   >
                     <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--color-washi)] transition-transform shadow-sm ${
                       editItem.is_available ? 'translate-x-6' : 'translate-x-0.5'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Featured Toggle */}
+                <div className="flex items-center justify-between p-4 bg-[var(--color-washi)]/[0.03] border border-[var(--color-washi)]/10">
+                  <div>
+                    <p className="text-sm text-[var(--color-washi)] font-medium text-amber-400">Featured Item (Max 5)</p>
+                    <p className="text-[10px] text-[var(--color-washi)]/30 mt-0.5">Show this item in the featured section on the homepage</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!editItem.is_featured) {
+                        const currentFeaturedCount = items.filter(i => i.is_featured && i.id !== editItem.id).length;
+                        if (currentFeaturedCount >= 5) {
+                          showToast('❌ Maximum 5 featured items allowed');
+                          return;
+                        }
+                      }
+                      setEditItem(prev => ({ ...prev, is_featured: !prev.is_featured }));
+                    }}
+                    className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
+                      editItem.is_featured ? 'bg-amber-400' : 'bg-[var(--color-washi)]/10'
+                    }`}
+                  >
+                    <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--color-washi)] transition-transform shadow-sm ${
+                      editItem.is_featured ? 'translate-x-6' : 'translate-x-0.5'
                     }`} />
                   </button>
                 </div>
