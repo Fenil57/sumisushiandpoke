@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { getMenuItems, type MenuItem } from "../services/menuService";
 import { useCart } from "../context/CartContext";
+import { SEOHead } from "../components/SEOHead";
 
 const RamenBowlIcon = ({
   className = "w-6 h-6",
@@ -251,6 +252,11 @@ export function OrderOnline() {
 
   return (
     <div className="relative min-h-screen bg-[#fdfbf7] overflow-x-hidden">
+      <SEOHead
+        title="Order Online | Sumi Sushi & Poke – Delivery in Kaarina"
+        description="Order fresh sushi, poke bowls, ramen, and wok dishes online for delivery or pickup from Sumi Sushi and Poke in Kaarina, Finland."
+        canonicalPath="/order"
+      />
       {/* Decorative background elements */}
       <div
         className="fixed inset-0 opacity-[0.03] pointer-events-none z-0"

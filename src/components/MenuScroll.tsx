@@ -66,6 +66,7 @@ export function MenuScroll() {
     <section
       id="menu"
       className="py-16 md:py-32 px-4 md:px-6 bg-[var(--color-sumi)] text-[var(--color-washi)]"
+      aria-label="Featured menu items"
     >
       <div className="max-w-[1400px] mx-auto">
         <div className="flex flex-col items-center text-center mb-8 md:mb-16 border-b border-[var(--color-washi)]/20 pb-8">
@@ -132,7 +133,7 @@ export function MenuScroll() {
                         transition={{ duration: 0.4, delay: 0.2 }}
                         className="flex flex-col h-full justify-end p-6 md:p-8"
                       >
-                        <div className="text-[#c92a2a] text-sm font-medium tracking-widest mb-3">
+                        <div className="text-[#c92a2a] text-sm font-medium tracking-widest mb-3" aria-hidden="true">
                           {String(idx + 1).padStart(2, "0")}
                         </div>
                         <h3 className="text-3xl md:text-5xl text-[#f9f6f0] font-serif font-bold mb-4">
@@ -148,9 +149,10 @@ export function MenuScroll() {
                           </span>
                           <button
                             onClick={(e) => handleAddToCart(e, item)}
+                            aria-label={`Add ${item.name} to cart`}
                             className={`text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium transition-colors flex items-center gap-2 cursor-pointer ${isAdded || isInCart ? 'text-[var(--color-shu)]' : 'text-[#f9f6f0] hover:text-[#c92a2a]'}`}
                           >
-                            <span className="w-4 md:w-8 h-[1px] bg-current"></span>{" "}
+                            <span className="w-4 md:w-8 h-[1px] bg-current" aria-hidden="true"></span>{" "}
                             {isAdded || isInCart ? "Added!" : t("menu.orderNow")}
                           </button>
                         </div>
@@ -165,7 +167,7 @@ export function MenuScroll() {
                         className="flex flex-col items-center justify-center md:items-start md:justify-center h-full p-4 md:py-8 md:px-2"
                       >
                         <div className="flex flex-col items-center">
-                          <div className="text-[#f9f6f0]/50 text-xs font-medium tracking-widest mb-2 md:mb-4">
+                          <div className="text-[#f9f6f0]/50 text-xs font-medium tracking-widest mb-2 md:mb-4" aria-hidden="true">
                             {String(idx + 1).padStart(2, "0")}
                           </div>
                           <h3 className="text-xl md:text-2xl text-[#f9f6f0] font-serif font-bold md:[writing-mode:vertical-rl] md:rotate-180 whitespace-nowrap">

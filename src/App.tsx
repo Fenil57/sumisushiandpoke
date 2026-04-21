@@ -129,11 +129,17 @@ function AppContent() {
   return (
     <>
       <CustomCursor />
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:px-6 focus:py-3 focus:bg-[var(--color-shu)] focus:text-[var(--color-washi)] focus:text-sm focus:font-bold focus:tracking-widest focus:uppercase focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
       <div
         className={`min-h-screen font-sans ${isAdminRoute ? "bg-[var(--color-sumi)] text-[var(--color-washi)]" : "bg-[#fdfbf7] text-[#2c2825] selection:bg-[#d4a373] selection:text-white"} flex flex-col`}
       >
         {!isAdminRoute && <Navbar />}
-        <main className="flex-1">
+        <main id="main-content" className="flex-1" role="main">
           <AnimatedRoutes />
         </main>
         {!isAdminRoute && <Footer />}

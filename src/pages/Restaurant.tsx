@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import KineticScrollGallery from "../components/ui/kinetic-scroll-gallery";
+import { SEOHead } from "../components/SEOHead";
 
 // Import local restaurant images
 import rest1 from "../assets/images/restaurant/rest-1.webp";
@@ -60,6 +61,11 @@ export function Restaurant() {
 
   return (
     <div className="min-h-screen bg-[var(--color-sumi)] pt-32 pb-24 px-4 md:px-6">
+      <SEOHead
+        title="Our Restaurant | Sumi Sushi & Poke – Photos & Atmosphere"
+        description="Explore the atmosphere and handcrafted dishes at Sumi Sushi and Poke in Kaarina, Finland. View our restaurant gallery and experience authentic Japanese dining."
+        canonicalPath="/restaurant"
+      />
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

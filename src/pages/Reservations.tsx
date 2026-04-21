@@ -5,6 +5,7 @@ import { ChevronDown, Calendar, Clock, Users, MessageSquare, AlertCircle } from 
 import { useSettings } from '../hooks/useSettings';
 import { getApiUrl, readApiJson } from '../lib/api';
 import { RESERVATION_TIME_SLOTS } from '../constants/reservations';
+import { SEOHead } from '../components/SEOHead';
 
 export function Reservations() {
   const { t } = useTranslation();
@@ -76,6 +77,11 @@ export function Reservations() {
 
   return (
     <div className="min-h-screen bg-[var(--color-sumi)] pt-32 pb-24 px-4 md:px-6 relative overflow-hidden">
+      <SEOHead
+        title="Book a Table | Sumi Sushi & Poke – Reservations in Kaarina"
+        description="Reserve your table at Sumi Sushi and Poke in Kaarina, Finland. Enjoy authentic Japanese cuisine in a warm, intimate setting. Book online or call us."
+        canonicalPath="/reservations"
+      />
       {/* Autofill and Custom Input Styles */}
       <style>{`
         select option {
@@ -248,9 +254,11 @@ export function Reservations() {
                   <motion.div 
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
+                    role="alert"
+                    aria-live="assertive"
                     className="mb-10 p-5 bg-red-500/10 border border-red-500/20 flex items-start gap-4 rounded-2xl"
                   >
-                    <AlertCircle size={24} className="text-red-400 shrink-0" />
+                    <AlertCircle size={24} className="text-red-400 shrink-0" aria-hidden="true" />
                     <div>
                       <h4 className="text-red-400 font-bold text-sm mb-1 uppercase tracking-wider">{t('reservations.errorTitle')}</h4>
                       <p className="text-red-400/70 text-sm leading-relaxed">{errorMsg}</p>
@@ -261,11 +269,13 @@ export function Reservations() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   {/* Name Input */}
                   <div className="space-y-3">
-                    <label className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
+                    <label htmlFor="reservation-name" className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
                       {t('reservations.formName')}
                     </label>
                     <input
+                      id="reservation-name"
                       required
+                      aria-required="true"
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
@@ -276,11 +286,13 @@ export function Reservations() {
 
                   {/* Phone Input */}
                   <div className="space-y-3">
-                    <label className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
+                    <label htmlFor="reservation-phone" className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
                       {t('reservations.formPhone')}
                     </label>
                     <input
+                      id="reservation-phone"
                       required
+                      aria-required="true"
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
@@ -291,11 +303,13 @@ export function Reservations() {
 
                   {/* Email Input */}
                   <div className="space-y-3 md:col-span-2">
-                    <label className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
+                    <label htmlFor="reservation-email" className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
                       {t('reservations.formEmail')}
                     </label>
                     <input
+                      id="reservation-email"
                       required
+                      aria-required="true"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -306,30 +320,34 @@ export function Reservations() {
 
                   {/* Date Input */}
                   <div className="space-y-3 relative">
-                    <label className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
+                    <label htmlFor="reservation-date" className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
                       {t('reservations.formDate')}
                     </label>
                     <div className="relative group">
                       <input
+                        id="reservation-date"
                         required
+                        aria-required="true"
                         type="date"
                         min={today}
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
                         className="w-full bg-transparent border-b border-[var(--color-washi)]/10 px-0 py-4 text-[var(--color-washi)] focus:outline-none focus:border-[var(--color-shu)] transition-all cursor-pointer appearance-none z-10 relative no-highlight text-lg [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                       />
-                      <Calendar size={20} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/20 group-hover:text-[var(--color-shu)] transition-colors pointer-events-none z-0" />
+                      <Calendar size={20} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/20 group-hover:text-[var(--color-shu)] transition-colors pointer-events-none z-0" aria-hidden="true" />
                     </div>
                   </div>
 
                   {/* Time Input */}
                   <div className="space-y-3 relative">
-                    <label className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
+                    <label htmlFor="reservation-time" className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
                       {t('reservations.formTime')}
                     </label>
                     <div className="relative group">
                       <select
+                        id="reservation-time"
                         required
+                        aria-required="true"
                         value={time}
                         onChange={(e) => setTime(e.target.value)}
                         className="w-full bg-transparent border-b border-[var(--color-washi)]/10 px-0 py-4 text-[var(--color-washi)] focus:outline-none focus:border-[var(--color-shu)] transition-all appearance-none cursor-pointer text-lg relative z-10 no-highlight"
@@ -337,18 +355,20 @@ export function Reservations() {
                         <option value="" disabled className="bg-[var(--color-sumi)]">{t('reservations.formTimePlaceholder')}</option>
                         {RESERVATION_TIME_SLOTS.map((slot) => <option key={slot} value={slot} className="bg-[var(--color-sumi)]">{slot}</option>)}
                       </select>
-                      <ChevronDown size={20} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/20 group-hover:text-[var(--color-shu)] transition-colors pointer-events-none z-0" />
+                      <ChevronDown size={20} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/20 group-hover:text-[var(--color-shu)] transition-colors pointer-events-none z-0" aria-hidden="true" />
                     </div>
                   </div>
 
                   {/* Guests Input */}
                   <div className="space-y-3 relative md:col-span-2">
-                    <label className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
+                    <label htmlFor="reservation-guests" className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40">
                       {t('reservations.formGuests')}
                     </label>
                     <div className="relative group">
                       <select
+                        id="reservation-guests"
                         required
+                        aria-required="true"
                         value={guests}
                         onChange={(e) => setGuests(e.target.value)}
                         className="w-full bg-transparent border-b border-[var(--color-washi)]/10 px-0 py-4 text-[var(--color-washi)] focus:outline-none focus:border-[var(--color-shu)] transition-all appearance-none cursor-pointer text-lg relative z-10 no-highlight"
@@ -360,16 +380,17 @@ export function Reservations() {
                         ))}
                         <option value="13" className="bg-[var(--color-sumi)]">{t('reservations.moreThanTwelve')}</option>
                       </select>
-                      <Users size={20} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/20 group-hover:text-[var(--color-shu)] transition-colors pointer-events-none z-0" />
+                      <Users size={20} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/20 group-hover:text-[var(--color-shu)] transition-colors pointer-events-none z-0" aria-hidden="true" />
                     </div>
                   </div>
 
                   {/* Special Requests */}
                   <div className="space-y-3 md:col-span-2">
-                    <label className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40 flex items-center gap-2">
-                      <MessageSquare size={12} /> {t('reservations.formRequests')}
+                    <label htmlFor="reservation-requests" className="block text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--color-washi)]/40 flex items-center gap-2">
+                      <MessageSquare size={12} aria-hidden="true" /> {t('reservations.formRequests')}
                     </label>
                     <textarea
+                      id="reservation-requests"
                       value={specialRequests}
                       onChange={(e) => setSpecialRequests(e.target.value)}
                       placeholder={t('reservations.formRequestsPlaceholder')}
@@ -389,7 +410,7 @@ export function Reservations() {
                     <span className="relative z-10 flex items-center justify-center gap-4">
                       {status === 'submitting' ? (
                         <>
-                          <div className="w-5 h-5 border-2 border-[var(--color-washi)]/30 border-t-[var(--color-washi)] rounded-full animate-spin" />
+                          <div className="w-5 h-5 border-2 border-[var(--color-washi)]/30 border-t-[var(--color-washi)] rounded-full animate-spin" role="status" aria-label="Submitting reservation" />
                           {t('reservations.submitting')}
                         </>
                       ) : (

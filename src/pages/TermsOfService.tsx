@@ -1,5 +1,6 @@
 import React from "react";
 import { LegalPageLayout } from "../components/LegalPageLayout";
+import { SEOHead } from "../components/SEOHead";
 
 const sections = [
   {
@@ -60,12 +61,19 @@ const sections = [
 
 export function TermsOfService() {
   return (
-    <LegalPageLayout
-      eyebrow="Terms"
-      title="Terms of Service"
-      updatedAt="April 18, 2026"
-      intro="These Terms of Service govern the use of the Sumi Sushi and Poke website, including menu browsing, reservation requests, contact forms, and online ordering features."
-      sections={sections}
-    />
+    <>
+      <SEOHead
+        title="Terms of Service | Sumi Sushi & Poke"
+        description="Terms of Service for Sumi Sushi and Poke. Understand the terms governing orders, reservations, and use of our website."
+        canonicalPath="/terms-of-service"
+      />
+      <LegalPageLayout
+        eyebrow="Terms"
+        title="Terms of Service"
+        updatedAt="April 18, 2026"
+        intro="These Terms of Service govern the use of the Sumi Sushi and Poke website, including menu browsing, reservation requests, contact forms, and online ordering features."
+        sections={sections}
+      />
+    </>
   );
 }

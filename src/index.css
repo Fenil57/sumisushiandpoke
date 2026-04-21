@@ -11,6 +11,37 @@
   --color-gold: #d4af37;
 }
 
+/* ── Accessibility: Screen-reader only utility ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ── Accessibility: Visible focus ring for keyboard users ── */
+*:focus-visible {
+  outline: 2px solid var(--color-shu);
+  outline-offset: 2px;
+}
+
+/* ── Accessibility: Respect reduced motion preference ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Global Autofill Reset */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
@@ -29,8 +60,9 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Custom cursor only for hover-capable devices — scoped to not break keyboard focus */
 @media (hover: hover) and (pointer: fine) {
-  * {
+  *:not(:focus-visible) {
     cursor: none !important;
   }
 }

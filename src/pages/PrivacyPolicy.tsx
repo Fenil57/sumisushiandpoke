@@ -1,5 +1,6 @@
 import React from "react";
 import { LegalPageLayout } from "../components/LegalPageLayout";
+import { SEOHead } from "../components/SEOHead";
 
 const sections = [
   {
@@ -59,12 +60,19 @@ const sections = [
 
 export function PrivacyPolicy() {
   return (
-    <LegalPageLayout
-      eyebrow="Privacy"
-      title="Privacy Policy"
-      updatedAt="April 17, 2026"
-      intro="This Privacy Policy explains how Sumi Sushi and Poke collects, uses, stores, and shares information when you use this website for restaurant orders, reservations, contact, or admin access."
-      sections={sections}
-    />
+    <>
+      <SEOHead
+        title="Privacy Policy | Sumi Sushi & Poke"
+        description="Privacy Policy for Sumi Sushi and Poke. Learn how we collect, use, and protect your personal data when you order, reserve, or contact us."
+        canonicalPath="/privacy-policy"
+      />
+      <LegalPageLayout
+        eyebrow="Privacy"
+        title="Privacy Policy"
+        updatedAt="April 17, 2026"
+        intro="This Privacy Policy explains how Sumi Sushi and Poke collects, uses, stores, and shares information when you use this website for restaurant orders, reservations, contact, or admin access."
+        sections={sections}
+      />
+    </>
   );
 }

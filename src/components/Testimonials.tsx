@@ -77,9 +77,10 @@ export function Testimonials() {
   const thirdColumn = allTestimonials.slice(6, 9);
 
   return (
-    <section className="bg-[var(--color-sumi)] pb-24 md:pb-32 relative overflow-hidden">
+    <section className="bg-[var(--color-sumi)] pb-24 md:pb-32 relative overflow-hidden" aria-label="Guest testimonials">
       <div
         className="absolute inset-0 opacity-[0.02] pointer-events-none"
+        aria-hidden="true"
         style={{
           backgroundImage:
             "radial-gradient(var(--color-washi) 1px, transparent 1px)",

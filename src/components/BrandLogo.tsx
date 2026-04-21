@@ -33,7 +33,9 @@ export function BrandLogo({
             stacked ? "flex flex-col items-center gap-1" : "flex flex-col"
           }
         >
-          <span className={textClassName}>SUMI SUSHI AND POKE</span>
+          <span className={`whitespace-nowrap ${textClassName}`}>
+            SUMI SUSHI AND POKE
+          </span>
           <span className={subtextClassName}>Authentic Taste</span>
         </div>
       )}

@@ -39,10 +39,10 @@ export function DeliveryWorkflow() {
   ];
 
   return (
-    <section id="delivery" className="py-16 md:py-32 px-4 md:px-6 bg-[var(--color-washi)] text-[var(--color-sumi)] relative">
+    <section id="delivery" className="py-16 md:py-32 px-4 md:px-6 bg-[var(--color-washi)] text-[var(--color-sumi)] relative" aria-label="Delivery process">
 
       {/* Artistic Japanese Illustration Background */}
-      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
 
         {/* Vertical Japanese Typography */}
         <div className="absolute top-0 left-4 md:left-12 bottom-0 flex items-center">
@@ -106,7 +106,7 @@ export function DeliveryWorkflow() {
               }}
             >
               {/* Giant Kanji Watermark */}
-              <div className={`absolute -bottom-8 -right-8 text-[10rem] md:text-[14rem] font-serif leading-none opacity-[0.04] group-hover:opacity-[0.08] transition-opacity duration-500 pointer-events-none select-none ${idx % 2 === 0 ? 'text-[var(--color-washi)]' : 'text-[var(--color-sumi)]'}`}>
+              <div className={`absolute -bottom-8 -right-8 text-[10rem] md:text-[14rem] font-serif leading-none opacity-[0.04] group-hover:opacity-[0.08] transition-opacity duration-500 pointer-events-none select-none ${idx % 2 === 0 ? 'text-[var(--color-washi)]' : 'text-[var(--color-sumi)]'}`} aria-hidden="true">
                 {step.kanji}
               </div>
 

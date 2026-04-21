@@ -141,7 +141,7 @@ export function RamenHero() {
   }, [scrollYProgress, paintFrame]);
 
   return (
-    <section ref={containerRef} className="relative h-[300vh] bg-[#f9f6f0]">
+    <section ref={containerRef} className="relative h-[300vh] bg-[#f9f6f0]" aria-label="Hero – The True Taste of Umami">
       <div className="sticky top-0 h-[100dvh] overflow-hidden flex flex-col items-center pt-[15vh] px-4 md:px-8">
         {/* Hero Typography */}
         <motion.div
@@ -176,7 +176,7 @@ export function RamenHero() {
             {/* Static poster — first frame shown instantly via <img> */}
             <img
               src={getFrameUrl(1)}
-              alt=""
+              alt="Freshly crafted Japanese ramen bowl at Sumi Sushi and Poke"
               className="w-full h-full object-cover absolute inset-0"
               style={{
                 opacity: imagesLoaded ? 0 : 1,
@@ -188,6 +188,8 @@ export function RamenHero() {
             {/* Canvas — renders scroll-driven frame sequence */}
             <canvas
               ref={canvasRef}
+              role="img"
+              aria-label="Animated ramen bowl preparation sequence"
               className="w-full h-full object-cover absolute inset-0"
               style={{
                 willChange: "auto",
@@ -201,12 +203,14 @@ export function RamenHero() {
         <motion.div
           style={{ y: textY, opacity: textOpacity }}
           className="absolute left-8 top-1/4 hidden lg:block vertical-text text-5xl font-serif text-[#1c1c1c] opacity-10 z-0"
+          aria-hidden="true"
         >
           伝統の味
         </motion.div>
         <motion.div
           style={{ y: textY, opacity: textOpacity }}
           className="absolute right-8 top-1/4 hidden lg:block vertical-text text-5xl font-serif text-[#1c1c1c] opacity-10 z-0"
+          aria-hidden="true"
         >
           最高品質
         </motion.div>

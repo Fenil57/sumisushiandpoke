@@ -88,11 +88,12 @@ export function Footer() {
   };
 
   return (
-    <footer className="relative bg-[#1c1c1c] text-[var(--color-washi)] overflow-hidden group">
-      <div className="absolute inset-0 z-0 overflow-hidden opacity-25 grayscale">
+    <footer className="relative bg-[#1c1c1c] text-[var(--color-washi)] overflow-hidden group" itemScope itemType="https://schema.org/Restaurant" aria-label="Site footer">
+      <div className="absolute inset-0 z-0 overflow-hidden opacity-25 grayscale" aria-hidden="true">
         <img
           src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=2000"
-          alt="Japanese Village"
+          alt=""
+          role="presentation"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/80 to-neutral-900/40" />
@@ -141,35 +142,39 @@ export function Footer() {
             <h4 className="text-xs font-bold tracking-[0.2em] uppercase mb-6">
               {t("footer.contact")}
             </h4>
-            <ul className="space-y-4 text-sm text-[var(--color-washi)]/60">
-              <li className="flex items-start gap-3">
-                <MapPin
-                  size={16}
-                  className="mt-0.5 shrink-0 text-[var(--color-shu)]"
-                />
-                <span className="leading-relaxed whitespace-pre-line">
-                  {settings.address}
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone size={16} className="shrink-0 text-[var(--color-shu)]" />
-                <a
-                  href={`tel:${settings.contactPhone}`}
-                  className="hover:text-[var(--color-shu)] transition-colors cursor-pointer"
-                >
-                  {settings.contactPhone}
-                </a>
-              </li>
-              <li className="flex items-center gap-3">
-                <Mail size={16} className="shrink-0 text-[var(--color-shu)]" />
-                <a
-                  href={`mailto:${settings.contactEmail}`}
-                  className="hover:text-[var(--color-shu)] transition-colors cursor-pointer"
-                >
-                  {settings.contactEmail}
-                </a>
-              </li>
-            </ul>
+            <address className="not-italic" itemProp="address" itemScope itemType="https://schema.org/PostalAddress">
+              <ul className="space-y-4 text-sm text-[var(--color-washi)]/60">
+                <li className="flex items-start gap-3">
+                  <MapPin
+                    size={16}
+                    className="mt-0.5 shrink-0 text-[var(--color-shu)]"
+                  />
+                  <span className="leading-relaxed whitespace-pre-line" itemProp="streetAddress">
+                    {settings.address}
+                  </span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <Phone size={16} className="shrink-0 text-[var(--color-shu)]" />
+                  <a
+                    href={`tel:${settings.contactPhone}`}
+                    className="hover:text-[var(--color-shu)] transition-colors cursor-pointer"
+                    itemProp="telephone"
+                  >
+                    {settings.contactPhone}
+                  </a>
+                </li>
+                <li className="flex items-center gap-3">
+                  <Mail size={16} className="shrink-0 text-[var(--color-shu)]" />
+                  <a
+                    href={`mailto:${settings.contactEmail}`}
+                    className="hover:text-[var(--color-shu)] transition-colors cursor-pointer"
+                    itemProp="email"
+                  >
+                    {settings.contactEmail}
+                  </a>
+                </li>
+              </ul>
+            </address>
           </div>
 
           <div className="md:col-span-1">
@@ -191,6 +196,14 @@ export function Footer() {
                   className="hover:text-[var(--color-shu)] transition-colors cursor-pointer"
                 >
                   {t("restaurant.tag")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/reservations"
+                  className="hover:text-[var(--color-shu)] transition-colors cursor-pointer"
+                >
+                  {t("reservations.tag")}
                 </Link>
               </li>
               <li>
