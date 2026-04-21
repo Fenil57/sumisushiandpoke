@@ -5,7 +5,7 @@ function normalizePrivateKey(privateKey: string): string {
   return privateKey.replace(/\\n/g, '\n');
 }
 
-function getAdminApp() {
+export function getAdminApp() {
   if (getApps().length > 0) {
     return getApps()[0];
   }

@@ -7,7 +7,8 @@ import express from 'express';
 import nodemailer from 'nodemailer';
 import rateLimit from 'express-rate-limit';
 import { Timestamp } from 'firebase-admin/firestore';
-import { getAdminDb, isFirebaseAdminConfigured } from './server/firebaseAdmin.js';
+import { getAuth } from 'firebase-admin/auth';
+import { getAdminDb, getAdminApp, isFirebaseAdminConfigured } from './server/firebaseAdmin.js';
 
 // Load environment variables. .env.local takes precedence over .env for safe local development.
 dotenv.config({ path: ['.env.local', '.env'] });
@@ -284,6 +285,27 @@ function requireAdminDb() {
     );
   }
   return db;
+}
+
+async function requireAdminAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+  }
+
+  const token = authHeader.split('Bearer ')[1];
+  try {
+    const adminApp = getAdminApp();
+    if (!adminApp) {
+      throw new Error('Firebase Admin not initialized');
+    }
+    const decodedToken = await getAuth(adminApp).verifyIdToken(token);
+    (req as any).user = decodedToken;
+    next();
+  } catch (error: any) {
+    console.error('Auth Error:', error.message);
+    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+  }
 }
 
 function getFlatpayApiKey(): string {
@@ -926,10 +948,12 @@ async function validateCheckoutPayload(payload: {
     matchedCustomerAddress = customerLocation.label;
   }
 
+  const isWithinFreeRadius =
+    (deliveryDistanceMeters || Number.POSITIVE_INFINITY) <= FREE_DELIVERY_RADIUS_METERS;
+  const isOverThreshold = subtotal >= DELIVERY_FEE_THRESHOLD;
+
   const deliveryFee =
-    orderType === 'delivery' &&
-    (deliveryDistanceMeters || Number.POSITIVE_INFINITY) > FREE_DELIVERY_RADIUS_METERS &&
-    subtotal > DELIVERY_FEE_THRESHOLD
+    orderType === 'delivery' && (!isWithinFreeRadius || !isOverThreshold)
       ? configuredDeliveryFee
       : 0;
 
@@ -966,9 +990,7 @@ async function createUnpaidOrder(
       email: checkout.customerInfo.email,
       address:
         checkout.orderType === 'delivery'
-          ? checkout.customerInfo.matched_address ||
-            checkout.customerInfo.address ||
-            ''
+          ? checkout.customerInfo.address || ''
           : undefined,
     },
     items: checkout.items,
@@ -991,9 +1013,7 @@ async function createUnpaidOrder(
         customerEmail: checkout.customerInfo.email,
         customerAddress:
           checkout.orderType === 'delivery'
-            ? checkout.customerInfo.matched_address ||
-              checkout.customerInfo.address ||
-              ''
+            ? checkout.customerInfo.address || ''
             : '',
         orderType: checkout.orderType,
         items: checkout.items,
@@ -1004,8 +1024,24 @@ async function createUnpaidOrder(
       },
       req,
     );
+
+    // Send receipt to customer
+    const settings = await fetchSiteSettings();
+    await sendOrderConfirmationEmail(
+      {
+        orderId: orderRef.id,
+        customerName: checkout.customerInfo.name,
+        customerEmail: checkout.customerInfo.email,
+        orderType: checkout.orderType,
+        items: checkout.items,
+        subtotal: checkout.subtotal,
+        deliveryFee: checkout.deliveryFee,
+        total: checkout.total,
+      },
+      settings,
+    );
   } catch (error: any) {
-    console.error('Failed to send order notification email:', error.message);
+    console.error('Failed to send order emails:', error.message);
   }
 
   return { orderId: orderRef.id };
@@ -1163,7 +1199,7 @@ async function sendOrderNotificationEmail(
         <tr>
           <td style="padding:8px 12px;border-bottom:1px solid #333;color:#ccc;">${item.quantity}x</td>
           <td style="padding:8px 12px;border-bottom:1px solid #333;color:#e8e0d4;">${item.name}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #333;color:#ccc;text-align:right;">EUR ${(item.price * item.quantity).toFixed(2)}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #333;color:#ccc;text-align:right;">€ ${(item.price * item.quantity).toFixed(2)}</td>
         </tr>
       `,
     )
@@ -1207,21 +1243,21 @@ async function sendOrderNotificationEmail(
           </tbody>
         </table>
 
-        <div style="border-top:2px solid #444;padding-top:12px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-            <span style="font-size:13px;color:#888;">Subtotal</span>
-            <span style="font-size:13px;color:#ccc;">EUR ${order.subtotal.toFixed(2)}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-            <span style="font-size:13px;color:#888;">Delivery</span>
-            <span style="font-size:13px;color:#ccc;">${order.deliveryFee > 0 ? `EUR ${order.deliveryFee.toFixed(2)}` : 'Free'}</span>
-          </div>
-          ${typeof order.deliveryDistanceMeters === 'number' ? `<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:13px;color:#888;">Distance</span><span style="font-size:13px;color:#ccc;">${(order.deliveryDistanceMeters / 1000).toFixed(2)} km</span></div>` : ''}
-          <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid #444;">
-            <span style="font-size:16px;font-weight:bold;color:#e8e0d4;">Total</span>
-            <span style="font-size:18px;font-weight:bold;color:#c23b22;">EUR ${order.total.toFixed(2)}</span>
-          </div>
-        </div>
+        <table style="width:100%;border-top:2px solid #444;padding-top:12px;border-collapse:collapse;">
+          <tr>
+            <td style="padding:4px 0;font-size:13px;color:#888;">Subtotal</td>
+            <td style="padding:4px 0;font-size:13px;color:#ccc;text-align:right;">€ ${order.subtotal.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;font-size:13px;color:#888;">Delivery</td>
+            <td style="padding:4px 0;font-size:13px;color:#ccc;text-align:right;">${order.deliveryFee > 0 ? `€ ${order.deliveryFee.toFixed(2)}` : 'Free'}</td>
+          </tr>
+          ${typeof order.deliveryDistanceMeters === 'number' ? `<tr><td style="padding:4px 0;font-size:13px;color:#888;">Distance</td><td style="padding:4px 0;font-size:13px;color:#ccc;text-align:right;">${(order.deliveryDistanceMeters / 1000).toFixed(2)} km</td></tr>` : ''}
+          <tr>
+            <td style="padding:12px 0 0;border-top:1px solid #444;font-size:16px;font-weight:bold;color:#e8e0d4;">Total</td>
+            <td style="padding:12px 0 0;border-top:1px solid #444;font-size:18px;font-weight:bold;color:#c23b22;text-align:right;">€ ${order.total.toFixed(2)}</td>
+          </tr>
+        </table>
       </div>
 
       <div style="padding:16px 24px;background:#111;text-align:center;">
@@ -1235,7 +1271,132 @@ async function sendOrderNotificationEmail(
   await emailTransporter.sendMail({
     from: `"Sumi Sushi and Poke" <${process.env.SMTP_USER}>`,
     to: notificationEmail,
-    subject: `New order #${order.orderId.slice(-8).toUpperCase()} - EUR ${order.total.toFixed(2)} (${order.orderType})`,
+    subject: `New order #${order.orderId.slice(-8).toUpperCase()} - € ${order.total.toFixed(2)} (${order.orderType})`,
+    html,
+  });
+}
+
+async function sendOrderConfirmationEmail(
+  order: {
+    orderId: string;
+    customerName: string;
+    customerEmail: string;
+    orderType: string;
+    items: { name: string; quantity: number; price: number }[];
+    subtotal: number;
+    deliveryFee: number;
+    total: number;
+  },
+  settings?: any,
+) {
+  if (!emailTransporter || !order.customerEmail) return;
+
+  const restaurantName = settings?.restaurantName || 'Sumi Sushi and Poke';
+  const contactPhone = settings?.contactPhone || '044 2479393';
+
+  const itemsHtml = order.items
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding:8px 0;border-bottom:1px solid #333;color:#ccc;">${item.quantity}x</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #333;color:#e8e0d4;">${item.name}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #333;color:#ccc;text-align:right;">€ ${(item.price * item.quantity).toFixed(2)}</td>
+        </tr>
+      `,
+    )
+    .join('');
+
+  const html = `
+    <div style="max-width:500px;margin:0 auto;background:#1a1a1a;color:#e8e0d4;font-family:Georgia,serif;padding:0;border:1px solid #333;">
+      <div style="background:#c23b22;padding:40px 24px;text-align:center;">
+        <h1 style="margin:0;font-size:24px;letter-spacing:4px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
+        <p style="margin:8px 0 0;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">Order Receipt</p>
+      </div>
+
+      <div style="padding:40px 32px;">
+        <p style="font-size:18px;margin-bottom:24px;">Hello ${order.customerName},</p>
+        <p style="line-height:1.6;color:#ccc;margin-bottom:32px;">
+          Thank you for your order! We have received it and will start preparing it soon.
+        </p>
+
+        <div style="background:#111;padding:24px;border-radius:4px;margin-bottom:32px;">
+          <p style="margin:0 0 16px;font-size:14px;"><span style="color:#888;">Order #:</span> ${order.orderId.slice(-8).toUpperCase()}</p>
+          <p style="margin:0 0 16px;font-size:14px;"><span style="color:#888;">Type:</span> ${order.orderType === 'delivery' ? 'Delivery' : 'Pickup'}</p>
+          
+          <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <table style="width:100%;border-collapse:collapse;">
+            <tr>
+              <td style="padding:4px 0;font-size:13px;color:#888;">Subtotal</td>
+              <td style="padding:4px 0;font-size:13px;color:#ccc;text-align:right;">€ ${order.subtotal.toFixed(2)}</td>
+            </tr>
+            ${order.deliveryFee > 0 ? `
+            <tr>
+              <td style="padding:4px 0;font-size:13px;color:#888;">Delivery</td>
+              <td style="padding:4px 0;font-size:13px;color:#ccc;text-align:right;">€ ${order.deliveryFee.toFixed(2)}</td>
+            </tr>` : ''}
+            <tr>
+              <td style="padding:12px 0 0;border-top:1px solid #444;font-size:16px;font-weight:bold;color:#e8e0d4;">Total</td>
+              <td style="padding:12px 0 0;border-top:1px solid #444;font-size:20px;font-weight:bold;color:#c23b22;text-align:right;">€ ${order.total.toFixed(2)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="font-size:13px;color:#888;line-height:1.6;text-align:center;">
+          If you have any questions about your order, please call us at ${contactPhone}.
+        </p>
+      </div>
+    </div>
+  `;
+
+  await emailTransporter.sendMail({
+    from: `"${restaurantName}" <${process.env.SMTP_USER}>`,
+    to: order.customerEmail,
+    subject: `Order Receipt - ${restaurantName} (#${order.orderId.slice(-8).toUpperCase()})`,
+    html,
+  });
+}
+
+async function sendOrderCancellationEmail(
+  order: {
+    orderId: string;
+    customerName: string;
+    customerEmail: string;
+  },
+  settings?: any,
+) {
+  if (!emailTransporter || !order.customerEmail) return;
+
+  const restaurantName = settings?.restaurantName || 'Sumi Sushi and Poke';
+  const contactPhone = settings?.contactPhone || '044 2479393';
+
+  const html = `
+    <div style="max-width:500px;margin:0 auto;background:#1a1a1a;color:#e8e0d4;font-family:Georgia,serif;padding:0;border:1px solid #333;">
+      <div style="background:#c23b22;padding:40px 24px;text-align:center;">
+        <h1 style="margin:0;font-size:24px;letter-spacing:4px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
+        <p style="margin:8px 0 0;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">Order Cancelled</p>
+      </div>
+
+      <div style="padding:40px 32px;">
+        <p style="font-size:18px;margin-bottom:24px;">Hello ${order.customerName},</p>
+        <p style="line-height:1.6;color:#ccc;margin-bottom:32px;">
+          We regret to inform you that your order #${order.orderId.slice(-8).toUpperCase()} has been cancelled.
+        </p>
+        <p style="font-size:13px;color:#888;line-height:1.6;">
+          If a payment was made, it will be refunded automatically. If you have any questions or believe this was a mistake, please call us at ${contactPhone}.
+        </p>
+      </div>
+    </div>
+  `;
+
+  await emailTransporter.sendMail({
+    from: `"${restaurantName}" <${process.env.SMTP_USER}>`,
+    to: order.customerEmail,
+    subject: `Order Cancelled - ${restaurantName} (#${order.orderId.slice(-8).toUpperCase()})`,
     html,
   });
 }
@@ -1478,7 +1639,7 @@ async function syncCheckoutFromFlatpay(
         email: latestCheckout.customer_info.email,
         address:
           latestCheckout.order_type === 'delivery'
-            ? latestCheckout.customer_info.matched_address || latestCheckout.customer_info.address || ''
+            ? latestCheckout.customer_info.address || ''
             : undefined,
       },
       items: latestCheckout.items,
@@ -1517,7 +1678,7 @@ async function syncCheckoutFromFlatpay(
 
   if (createdOrderPayload) {
     try {
-      await sendOrderNotificationEmail(
+    await sendOrderNotificationEmail(
         {
           orderId: createdOrderId,
           customerName: createdOrderPayload.customer_info.name,
@@ -1525,9 +1686,7 @@ async function syncCheckoutFromFlatpay(
           customerEmail: createdOrderPayload.customer_info.email,
           customerAddress:
             createdOrderPayload.order_type === 'delivery'
-              ? createdOrderPayload.customer_info.matched_address ||
-                createdOrderPayload.customer_info.address ||
-                ''
+              ? createdOrderPayload.customer_info.address || ''
               : '',
           orderType: createdOrderPayload.order_type,
           items: createdOrderPayload.items,
@@ -1538,8 +1697,24 @@ async function syncCheckoutFromFlatpay(
         },
         req,
       );
+
+      // Send receipt to customer
+      const settings = await fetchSiteSettings();
+      await sendOrderConfirmationEmail(
+        {
+          orderId: createdOrderId,
+          customerName: createdOrderPayload.customer_info.name,
+          customerEmail: createdOrderPayload.customer_info.email,
+          orderType: createdOrderPayload.order_type,
+          items: createdOrderPayload.items,
+          subtotal: createdOrderPayload.subtotal_amount,
+          deliveryFee: createdOrderPayload.delivery_fee,
+          total: createdOrderPayload.total_amount,
+        },
+        settings,
+      );
     } catch (error: any) {
-      console.error('Failed to send order notification email:', error.message);
+      console.error('Failed to send order emails:', error.message);
     }
   }
 
@@ -2089,6 +2264,109 @@ app.post('/api/reservations/:reservationId/cancel', async (req, res) => {
     res.status(status).json({
       error: error.message || 'We could not cancel that reservation.',
     });
+  }
+});
+
+app.patch('/api/admin/orders/:orderId/status', requireAdminAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
+    const db = requireAdminDb();
+    const orderRef = db.collection(ORDERS_COLLECTION).doc(orderId);
+    const snapshot = await orderRef.get();
+
+    if (!snapshot.exists) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const orderData = snapshot.data();
+    await orderRef.update({
+      status,
+      updated_at: Timestamp.now(),
+    });
+
+    if (status === 'cancelled') {
+      const settings = await fetchSiteSettings();
+      await sendOrderCancellationEmail(
+        {
+          orderId,
+          customerName: orderData?.customer_info?.name || 'Guest',
+          customerEmail: orderData?.customer_info?.email,
+        },
+        settings,
+      ).catch((err) => console.error('Failed to send order cancellation email:', err.message));
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error updating order status:', error.message);
+    res.status(500).json({ error: error.message || 'Failed to update order status.' });
+  }
+});
+
+app.patch('/api/admin/reservations/:reservationId/status', requireAdminAuth, async (req, res) => {
+  try {
+    const { reservationId } = req.params;
+    const { status } = req.body;
+    const db = requireAdminDb();
+    const resRef = db.collection(RESERVATIONS_COLLECTION).doc(reservationId);
+    const snapshot = await resRef.get();
+
+    if (!snapshot.exists) {
+      return res.status(404).json({ error: 'Reservation not found' });
+    }
+
+    const reservation = snapshot.data() as ReservationRecord;
+    await resRef.update({
+      status,
+      updated_at: Timestamp.now(),
+    });
+
+    const settings = await getSiteSettings();
+    const reservationEmailData: ReservationEmailInput = {
+      id: reservationId,
+      customerName: reservation.customer_info.name,
+      customerPhone: reservation.customer_info.phone,
+      customerEmail: reservation.customer_info.email,
+      date: reservation.date,
+      time: reservation.time,
+      guests: reservation.guests,
+      specialRequests: reservation.special_requests,
+      status: status,
+    };
+
+    if (status === 'confirmed') {
+      const manageToken = ''; // We don't have the plain token here easily, but the email template handle it
+      // Actually we might need the manage link. But if it's already confirmed, they might just need the info.
+      // Let's see if we can get the manage URL.
+      
+      await sendReservationConfirmationEmail(
+        reservationEmailData,
+        settings,
+        {
+          subject: `Reservation Confirmed - ${settings?.restaurantName || 'Sumi Sushi and Poke'} (${reservation.date})`,
+          title: 'Reservation Confirmed',
+          body: `Good news! Your reservation at ${settings?.restaurantName || 'Sumi Sushi and Poke'} has been confirmed. We look forward to seeing you!`,
+          helperText: `If you need to make changes, please call us at ${settings?.contactPhone || '044 2479393'}.`,
+        },
+      ).catch((err) => console.error('Failed to send reservation confirmation email:', err.message));
+    } else if (status === 'cancelled') {
+      await sendReservationConfirmationEmail(
+        reservationEmailData,
+        settings,
+        {
+          subject: `Reservation Declined - ${settings?.restaurantName || 'Sumi Sushi and Poke'} (${reservation.date})`,
+          title: 'Reservation Declined',
+          body: `We are sorry, but we are unable to accommodate your reservation request at this time. This is usually due to the restaurant being fully booked for the requested period.`,
+          helperText: `We hope to see you another time! If you have questions, please call us at ${settings?.contactPhone || '044 2479393'}.`,
+        },
+      ).catch((err) => console.error('Failed to send reservation rejection email:', err.message));
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error updating reservation status:', error.message);
+    res.status(500).json({ error: error.message || 'Failed to update reservation status.' });
   }
 });
 

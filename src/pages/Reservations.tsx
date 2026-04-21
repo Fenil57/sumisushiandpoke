@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Calendar, Clock, Users, MessageSquare, AlertCircle } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
-import successIllustration from '../assets/reservation-success.png';
 import { getApiUrl, readApiJson } from '../lib/api';
 import { RESERVATION_TIME_SLOTS } from '../constants/reservations';
 
@@ -79,16 +78,6 @@ export function Reservations() {
     <div className="min-h-screen bg-[var(--color-sumi)] pt-32 pb-24 px-4 md:px-6 relative overflow-hidden">
       {/* Autofill and Custom Input Styles */}
       <style>{`
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus,
-        input:-webkit-autofill:active {
-            -webkit-box-shadow: 0 0 0 100px var(--color-sumi) inset !important;
-            -webkit-text-fill-color: var(--color-washi) !important;
-            transition: background-color 5000s ease-in-out 0s;
-        }
-        
-        /* Modern Select styling hint */
         select option {
           background-color: var(--color-sumi);
           color: var(--color-washi);
@@ -142,46 +131,109 @@ export function Reservations() {
             {status === 'success' ? (
               <motion.div
                 key="success"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.6, ease: "circOut" }}
-                className="p-12 md:p-20 text-center flex flex-col items-center justify-center min-h-[550px]"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
+                className="p-12 md:p-24 text-center flex flex-col items-center justify-center min-h-[600px]"
               >
-                <div className="w-full max-w-[280px] mb-10 overflow-hidden rounded-2xl">
-                   <motion.img 
-                    initial={{ scale: 1.1, opacity: 0 }}
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.8 }}
+                  className="mb-12 relative flex items-center justify-center"
+                >
+                  {/* Elegant, thin outer halo */}
+                  <motion.div 
+                    initial={{ scale: 0.7, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.3, duration: 1 }}
-                    src={successIllustration} 
-                    alt="Reservation Confirmed" 
-                    className="w-full h-auto object-cover"
-                   />
-                </div>
+                    transition={{ duration: 1.2, ease: [0.19, 1, 0.22, 1] }}
+                    className="absolute w-28 h-28 border border-green-500/20 rounded-full"
+                  />
+                  
+                  {/* Secondary thin ring */}
+                  <motion.div 
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 0.4 }}
+                    transition={{ delay: 0.2, duration: 1, ease: "easeOut" }}
+                    className="absolute w-24 h-24 border border-green-500/10 rounded-full"
+                  />
+
+                  {/* Animated Drawing Check Icon */}
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 25, delay: 0.3 }}
+                    className="relative z-10 flex items-center justify-center"
+                  >
+                    <div className="p-4 bg-green-500/5 rounded-full backdrop-blur-sm">
+                      <svg
+                        width="42"
+                        height="42"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#22c55e"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <motion.path
+                          d="M4 12l5 5L20 6"
+                          initial={{ pathLength: 0 }}
+                          animate={{ pathLength: 1 }}
+                          transition={{ 
+                            delay: 0.5, 
+                            duration: 0.8, 
+                            ease: [0.19, 1, 0.22, 1] 
+                          }}
+                        />
+                      </svg>
+                    </div>
+                  </motion.div>
+                  
+                  {/* Ambient ambient glow */}
+                  <motion.div 
+                    animate={{ 
+                      opacity: [0.2, 0.4, 0.2],
+                    }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute w-16 h-16 bg-green-500/20 blur-3xl -z-10"
+                  />
+                </motion.div>
                 
-                <h3 className="text-4xl font-serif text-[var(--color-washi)] mb-4">{t('reservations.successTitle')}</h3>
-                <p className="text-[var(--color-washi)]/60 max-w-md mx-auto mb-12 text-lg leading-relaxed font-light">
+                <h3 className="text-4xl md:text-5xl font-serif text-[var(--color-washi)] mb-6 tracking-tight">
+                  {t('reservations.successTitle')}
+                </h3>
+                
+                <p className="text-[var(--color-washi)]/60 max-w-lg mx-auto mb-16 text-lg leading-relaxed font-light">
                   {t('reservations.successDesc')}
                 </p>
-                {manageUrl && (
-                  <a
-                    href={manageUrl}
-                    className="group relative mb-4 inline-flex px-10 py-4 border border-[var(--color-shu)]/50 bg-[var(--color-shu)] text-[var(--color-washi)] text-[10px] tracking-[0.3em] uppercase font-bold transition-all overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-[#a02020] translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-                    <span className="relative z-10">{t('reservations.manageLinkButton')}</span>
-                  </a>
-                )}
-                <p className="text-[var(--color-washi)]/45 max-w-md mx-auto mb-8 text-sm leading-relaxed">
-                  {t('reservations.manageLinkHint')}
-                </p>
-                <button
-                  onClick={resetForm}
-                  className="group relative px-10 py-4 border border-[var(--color-washi)]/20 text-[var(--color-washi)] text-[10px] tracking-[0.3em] uppercase font-bold transition-all overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-[var(--color-washi)] translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-                  <span className="relative z-10 group-hover:text-[var(--color-sumi)]">{t('reservations.submitNew')}</span>
-                </button>
+
+                <div className="flex flex-col items-center gap-6 w-full max-w-sm">
+                  {manageUrl && (
+                    <div className="w-full space-y-4">
+                      <a
+                        href={manageUrl}
+                        className="group relative flex w-full items-center justify-center px-10 py-5 bg-[var(--color-shu)] text-[var(--color-washi)] text-[11px] tracking-[0.4em] uppercase font-black transition-all hover:shadow-[0_10px_40px_rgba(201,42,42,0.3)] overflow-hidden"
+                      >
+                        <div className="absolute inset-0 bg-black/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                        <span className="relative z-10">{t('reservations.manageLinkButton')}</span>
+                      </a>
+                      <p className="text-[var(--color-washi)]/30 text-[10px] tracking-[0.2em] uppercase font-medium">
+                        {t('reservations.manageLinkHint')}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="w-full pt-4 border-t border-[var(--color-washi)]/5">
+                    <button
+                      onClick={resetForm}
+                      className="group flex w-full items-center justify-center px-10 py-5 border border-[var(--color-washi)]/10 text-[var(--color-washi)]/50 hover:text-[var(--color-washi)] text-[10px] tracking-[0.4em] uppercase font-bold transition-all hover:bg-[var(--color-washi)]/5"
+                    >
+                      <span>{t('reservations.submitNew')}</span>
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             ) : (
               <motion.form

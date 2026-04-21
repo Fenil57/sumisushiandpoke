@@ -10,7 +10,9 @@ import {
   MessageSquare,
   Users,
   XCircle,
+  AlertTriangle
 } from "lucide-react";
+import { ConfirmationModal } from "../components/ui/ConfirmationModal";
 import { useTranslation } from "react-i18next";
 import { getApiUrl, readApiJson } from "../lib/api";
 import { RESERVATION_TIME_SLOTS } from "../constants/reservations";
@@ -64,6 +66,7 @@ export function ReservationManage() {
   const [time, setTime] = useState("");
   const [guests, setGuests] = useState("2");
   const [specialRequests, setSpecialRequests] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     async function loadReservation() {
@@ -147,15 +150,14 @@ export function ReservationManage() {
     }
   };
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
     if (!data || isCancelling || !data.permissions.canCancel) {
       return;
     }
+    setIsModalOpen(true);
+  };
 
-    if (!window.confirm(t("reservations.manage.cancelConfirm"))) {
-      return;
-    }
-
+  const confirmCancel = async () => {
     setIsCancelling(true);
     setErrorMsg("");
     setSuccessMsg("");
@@ -484,6 +486,16 @@ export function ReservationManage() {
           ) : null}
         </motion.div>
       </div>
+
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmCancel}
+        title={t("reservations.manage.cancelConfirm")}
+        message={t("reservations.manage.helpBody", { hours: permissions?.editCutoffHours || 4 })}
+        confirmLabel={t("reservations.manage.cancelButton")}
+        cancelLabel={t("common.dismiss")}
+      />
     </div>
   );
 }

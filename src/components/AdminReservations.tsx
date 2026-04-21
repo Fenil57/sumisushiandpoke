@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Calendar, Clock, Users, CheckCircle2, XCircle, Bell, Filter } from "lucide-react";
+import { Calendar, Clock, Users, CheckCircle2, XCircle, Bell, Filter, AlertTriangle } from "lucide-react";
 import { subscribeToReservations, updateReservationStatus, type Reservation, type ReservationStatus } from "../services/reservationService";
+import { ConfirmationModal } from './ui/ConfirmationModal';
 
 const STATUS_CONFIG: Record<ReservationStatus, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
   pending: {
@@ -41,6 +42,8 @@ function formatTimeAgo(timestamp: any): string {
 export function AdminReservations() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [filter, setFilter] = useState<ReservationStatus | "all">("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [resToCancel, setResToCancel] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,11 +65,28 @@ export function AdminReservations() {
   }, []);
 
   const handleStatusUpdate = async (id: string, newStatus: ReservationStatus) => {
+    if (newStatus === 'cancelled') {
+      setResToCancel(id);
+      setIsModalOpen(true);
+      return;
+    }
+    
     try {
       await updateReservationStatus(id, newStatus);
     } catch (err) {
       console.error("Failed to update reservation status:", err);
     }
+  };
+
+  const confirmReject = async () => {
+    if (!resToCancel) return;
+    try {
+      await updateReservationStatus(resToCancel, "cancelled");
+    } catch (err) {
+      console.error("Failed to reject reservation:", err);
+    }
+    setResToCancel(null);
+    setIsModalOpen(false);
   };
 
   const filteredReservations = filter === "all" ? reservations : reservations.filter((r) => r.status === filter);
@@ -235,6 +255,16 @@ export function AdminReservations() {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmReject}
+        title="Reject Reservation"
+        message="Are you sure you want to reject this reservation? This will send an automated notification to the guest and free up the table."
+        confirmLabel="Reject Reservation"
+        cancelLabel="Dismiss"
+      />
     </div>
   );
 }

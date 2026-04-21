@@ -10,7 +10,7 @@ import {
   Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
@@ -110,11 +110,22 @@ export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus
 ): Promise<void> {
-  const ref = doc(db, COLLECTION, orderId);
-  await updateDoc(ref, {
-    status,
-    updated_at: Timestamp.now(),
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/admin/orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ status })
   });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to update order status');
+  }
 }
 
 /**

@@ -4,6 +4,13 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   en: {
     translation: {
+      common: {
+        back: "Back",
+        cancel: "Cancel",
+        confirm: "Confirm",
+        close: "Close",
+        dismiss: "Dismiss"
+      },
       nav: {
         menu: "Menu",
         delivery: "Delivery",
@@ -116,6 +123,8 @@ const resources = {
         freeDeliveryWithinRadius: "Free delivery applies within {{km}} km.",
         standardDeliveryApplies: "This address is outside the free-delivery radius. Standard delivery pricing applies.",
         deliveryAddressRequired: "Delivery address is required for delivery orders.",
+        nameRequired: "Full Name is required",
+        phoneRequired: "Phone Number is required",
         deliveryAddressValidationError: "We could not validate that delivery address. Please try again.",
         items: "items",
         proceedToPayment: "Proceed to Payment",
@@ -264,6 +273,13 @@ const resources = {
   },
   fi: {
     translation: {
+      common: {
+        back: "Takaisin",
+        cancel: "Peruuta",
+        confirm: "Vahvista",
+        close: "Sulje",
+        dismiss: "Sulje"
+      },
       nav: {
         menu: "Ruokalista",
         delivery: "Kuljetus",
@@ -376,6 +392,8 @@ const resources = {
         freeDeliveryWithinRadius: "Ilmainen toimitus koskee {{km}} km sädettä.",
         standardDeliveryApplies: "Tämä osoite on ilmaisen toimituksen alueen ulkopuolella. Normaali toimitushinnoittelu käytetään.",
         deliveryAddressRequired: "Toimitusosoite on pakollinen kotiinkuljetustilauksille.",
+        nameRequired: "Koko nimi on pakollinen",
+        phoneRequired: "Puhelinnumero on pakollinen",
         deliveryAddressValidationError: "Toimitusosoitetta ei voitu vahvistaa. Yritä uudelleen.",
         items: "tuotetta",
         proceedToPayment: "Siirry maksamaan",

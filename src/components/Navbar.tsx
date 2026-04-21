@@ -70,7 +70,7 @@ export function Navbar() {
 
         <div className="flex items-center gap-6 md:gap-10">
           <div className="hidden md:flex items-center gap-10">
-            <a href="/#menu" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('nav.menu')}</a>
+            <Link to="/#menu" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('nav.menu')}</Link>
             <Link to="/restaurant" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('restaurant.tag')}</Link>
             <Link to="/reservations" className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}>{t('reservations.tag')}</Link>
             <div className="relative" ref={langMenuRef}>
@@ -201,7 +201,7 @@ export function Navbar() {
 
 
             <div className="flex flex-col items-center gap-8 relative z-10">
-              <a href="/#menu" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Home {t('nav.menu')}</a>
+              <Link to="/#menu" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Home {t('nav.menu')}</Link>
               <Link to="/restaurant" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">{t('restaurant.tag')}</Link>
               <Link to="/reservations" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">{t('reservations.tag')}</Link>
               <Link to="/order" onClick={() => setIsMobileMenuOpen(false)} className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors">Full {t('nav.menu')}</Link>

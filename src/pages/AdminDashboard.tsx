@@ -2,21 +2,30 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  LogOut,
-  Clock,
-  ChefHat,
   Package,
+  Truck,
   CheckCircle2,
+  Clock,
+  AlertCircle,
+  LogOut,
+  UtensilsCrossed,
+  ChevronRight,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  AlertTriangle,
+  ChefHat,
   XCircle,
   Bell,
   Filter,
-  UtensilsCrossed,
   ShoppingBag,
   Settings,
   Globe,
   ChevronDown,
-  Calendar,
 } from "lucide-react";
+import { ConfirmationModal } from "../components/ui/ConfirmationModal";
 import {
   subscribeToOrders,
   updateOrderStatus,
@@ -101,6 +110,8 @@ export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const prevOrderCountRef = useRef(0);
@@ -166,14 +177,20 @@ export function AdminDashboard() {
     }
   };
 
-  const handleCancel = async (orderId: string) => {
-    if (window.confirm("Are you sure you want to cancel this order?")) {
-      try {
-        await updateOrderStatus(orderId, "cancelled");
-      } catch (err) {
-        console.error("Failed to cancel order:", err);
-      }
+  const handleCancel = (orderId: string) => {
+    setOrderToCancel(orderId);
+    setIsModalOpen(true);
+  };
+
+  const confirmCancel = async () => {
+    if (!orderToCancel) return;
+    try {
+      await updateOrderStatus(orderToCancel, "cancelled");
+    } catch (err) {
+      console.error("Failed to cancel order:", err);
     }
+    setOrderToCancel(null);
+    setIsModalOpen(false);
   };
 
   const handleLogout = async () => {
@@ -202,35 +219,38 @@ export function AdminDashboard() {
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[var(--color-sumi)]/80 backdrop-blur-xl border-b border-[var(--color-washi)]/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <BrandLogo
-              imageClassName="h-10 w-10 object-contain"
-              textClassName="text-sm md:text-base font-bold tracking-[0.14em] text-[var(--color-washi)]"
-              subtextClassName="text-[9px] tracking-[0.22em] uppercase text-[var(--color-shu)]"
-            />
-            <div className="hidden sm:flex items-center gap-4 ml-6">
-              <div className="flex items-center gap-2 text-xs text-[var(--color-washi)]/50">
-                <div
-                  className={`w-2 h-2 rounded-full ${activeOrders.length > 0 ? "bg-emerald-400 animate-pulse" : "bg-[var(--color-washi)]/20"}`}
-                />
-                {activeOrders.length} {t('admin.active')}
-              </div>
-              {pendingCount > 0 && (
-                <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/30 px-2.5 py-1 text-amber-400 text-xs font-bold">
-                  <Bell size={12} />
-                  {pendingCount} {t('admin.new')}
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <BrandLogo
+                imageClassName="h-8 md:h-10 w-8 md:w-10 object-contain"
+                textClassName="text-[10px] md:text-base font-bold tracking-[0.14em] text-[var(--color-washi)] line-clamp-1"
+                subtextClassName="hidden md:block text-[9px] tracking-[0.22em] uppercase text-[var(--color-shu)]"
+              />
+              <div className="flex items-center gap-2 md:gap-4 ml-2 md:ml-6">
+                <div className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs text-[var(--color-washi)]/50 whitespace-nowrap">
+                  <div
+                    className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${activeOrders.length > 0 ? "bg-emerald-400 animate-pulse" : "bg-[var(--color-washi)]/20"}`}
+                  />
+                  <span className="hidden xs:inline">{activeOrders.length} {t('admin.active')}</span>
+                  <span className="xs:hidden">{activeOrders.length}</span>
                 </div>
-              )}
+                {pendingCount > 0 && (
+                  <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 md:px-2.5 md:py-1 text-amber-400 text-[10px] md:text-xs font-bold whitespace-nowrap">
+                    <Bell size={10} className="md:w-3 md:h-3" />
+                    <span>{pendingCount}</span>
+                    <span className="hidden xs:inline ml-0.5">{t('admin.new')}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            {/* Language Switcher */}
-            <div
-              className="hidden sm:flex items-center gap-2 mr-4 border-r border-[var(--color-washi)]/10 pr-4 relative"
-              ref={langMenuRef}
-            >
+            <div className="flex items-center gap-2 md:gap-3 shrink-0">
+              {/* Language Switcher */}
+              <div
+                className="flex items-center gap-2 border-r border-[var(--color-washi)]/10 pr-2 md:pr-4 relative"
+                ref={langMenuRef}
+              >
               <button
                 onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
                 className="text-[10px] tracking-[0.2em] uppercase font-bold text-[var(--color-washi)]/80 hover:text-[var(--color-washi)] transition-colors flex items-center gap-1.5 cursor-pointer"
@@ -274,61 +294,64 @@ export function AdminDashboard() {
               </AnimatePresence>
             </div>
 
-            {/* Tab Navigation */}
-            <div className="flex border border-[var(--color-washi)]/10 overflow-hidden">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-[10px] md:text-xs tracking-[0.15em] uppercase font-medium text-[var(--color-washi)]/50 hover:text-[var(--color-shu)] transition-colors cursor-pointer ml-1 md:ml-2"
+            >
+              <LogOut size={14} className="md:w-4 md:h-4" />
+              <span className="hidden md:inline">{t('admin.signOut')}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation - Second row on mobile, integrated on desktop */}
+          <div className="flex border-t sm:border-t-0 border-[var(--color-washi)]/10 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto no-scrollbar">
+            <div className="flex py-2 sm:py-0">
               <button
                 onClick={() => setActiveTab("orders")}
-                className={`flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-3 md:px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "orders"
-                    ? "bg-[var(--color-shu)] text-[var(--color-washi)]"
+                    ? "text-[var(--color-shu)] border-b-2 border-[var(--color-shu)] sm:bg-[var(--color-shu)] sm:text-[var(--color-washi)] sm:border-b-0"
                     : "text-[var(--color-washi)]/40 hover:text-[var(--color-washi)]/70"
                 }`}
               >
                 <ShoppingBag size={14} />
-                <span className="hidden md:inline">{t('admin.orders')}</span>
+                <span>{t('admin.orders')}</span>
               </button>
               <button
                 onClick={() => setActiveTab("reservations")}
-                className={`flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold transition-all cursor-pointer border-l border-[var(--color-washi)]/10 ${
+                className={`flex items-center gap-2 px-3 md:px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold transition-all cursor-pointer border-l border-[var(--color-washi)]/10 whitespace-nowrap ${
                   activeTab === "reservations"
-                    ? "bg-[var(--color-shu)] text-[var(--color-washi)]"
+                    ? "text-[var(--color-shu)] border-b-2 border-[var(--color-shu)] sm:bg-[var(--color-shu)] sm:text-[var(--color-washi)] sm:border-b-0"
                     : "text-[var(--color-washi)]/40 hover:text-[var(--color-washi)]/70"
                 }`}
               >
                 <Calendar size={14} />
-                <span className="hidden md:inline">{t('reservations.tag')}</span>
+                <span>{t('reservations.tag')}</span>
               </button>
               <button
                 onClick={() => setActiveTab("menu")}
-                className={`flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold transition-all cursor-pointer border-l border-[var(--color-washi)]/10 ${
+                className={`flex items-center gap-2 px-3 md:px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold transition-all cursor-pointer border-l border-[var(--color-washi)]/10 whitespace-nowrap ${
                   activeTab === "menu"
-                    ? "bg-[var(--color-shu)] text-[var(--color-washi)]"
+                    ? "text-[var(--color-shu)] border-b-2 border-[var(--color-shu)] sm:bg-[var(--color-shu)] sm:text-[var(--color-washi)] sm:border-b-0"
                     : "text-[var(--color-washi)]/40 hover:text-[var(--color-washi)]/70"
                 }`}
               >
                 <UtensilsCrossed size={14} />
-                <span className="hidden md:inline">{t('admin.menu')}</span>
+                <span>{t('admin.menu')}</span>
               </button>
               <button
                 onClick={() => setActiveTab("settings")}
-                className={`flex items-center gap-2 px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold transition-all cursor-pointer border-l border-[var(--color-washi)]/10 ${
+                className={`flex items-center gap-2 px-3 md:px-4 py-2 text-[10px] tracking-[0.15em] uppercase font-bold transition-all cursor-pointer border-l border-[var(--color-washi)]/10 whitespace-nowrap ${
                   activeTab === "settings"
-                    ? "bg-[var(--color-shu)] text-[var(--color-washi)]"
+                    ? "text-[var(--color-shu)] border-b-2 border-[var(--color-shu)] sm:bg-[var(--color-shu)] sm:text-[var(--color-washi)] sm:border-b-0"
                     : "text-[var(--color-washi)]/40 hover:text-[var(--color-washi)]/70"
                 }`}
               >
                 <Settings size={14} />
-                <span className="hidden md:inline">{t('admin.settings')}</span>
+                <span>{t('admin.settings')}</span>
               </button>
             </div>
-
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-xs tracking-[0.15em] uppercase font-medium text-[var(--color-washi)]/50 hover:text-[var(--color-shu)] transition-colors cursor-pointer ml-2"
-            >
-              <LogOut size={16} />
-              <span className="hidden sm:inline">{t('admin.signOut')}</span>
-            </button>
           </div>
         </div>
       </header>
@@ -476,7 +499,7 @@ export function AdminDashboard() {
                               </span>
                             </div>
                             {order.order_type === "delivery" && order.customer_info?.address && (
-                              <p className="mt-2 text-xs text-[var(--color-washi)]/45 whitespace-pre-line">
+                              <p className="mt-2 text-xs text-[var(--color-washi)]/45 whitespace-pre-line leading-relaxed">
                                 {order.customer_info.address}
                               </p>
                             )}
@@ -502,24 +525,29 @@ export function AdminDashboard() {
                             ))}
                           </div>
 
-                          {/* Total */}
-                          <div className="flex justify-between items-center pt-3 border-t border-[var(--color-washi)]/10">
-                            <span className="text-xs tracking-[0.1em] uppercase text-[var(--color-washi)]/40">
-                              {t('admin.total')}
-                            </span>
-                            <span className="font-serif font-bold text-lg text-[var(--color-washi)]">
-                              €
-                              {(
-                                (order.total_amount || 0) +
-                                (order.delivery_fee || 0)
-                              ).toFixed(2)}
-                            </span>
+                          {/* Price Breakdown */}
+                          <div className="pt-4 mt-4 border-t border-[var(--color-washi)]/10 space-y-2">
+                            <div className="flex justify-between items-center text-xs text-[var(--color-washi)]/40">
+                              <span>{t('order.subtotal')}</span>
+                              <span>€{(order.total_amount || 0).toFixed(2)}</span>
+                            </div>
+                            {order.order_type === "delivery" && (
+                              <div className="flex justify-between items-center text-xs text-[var(--color-washi)]/40">
+                                <span>{t('order.deliveryFee')}</span>
+                                <span>€{(order.delivery_fee || 0).toFixed(2)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center pt-3 mt-2 border-t border-[var(--color-washi)]/10">
+                              <span className="text-[10px] tracking-[0.2em] uppercase text-[var(--color-washi)]/60 font-bold">
+                                {t('admin.total')}
+                              </span>
+                              <span className="font-serif font-bold text-xl text-[var(--color-washi)]">
+                                €{((order.total_amount || 0) + (order.delivery_fee || 0)).toFixed(2)}
+                              </span>
+                            </div>
                           </div>
 
-                          {/* Time ordered */}
-                          <div className="mt-2 text-[10px] text-[var(--color-washi)]/20 text-right">
-                            {t('admin.orderedAt')} {formatTime(order.created_at)}
-                          </div>
+
 
                           {/* Actions */}
                           {!["completed", "cancelled"].includes(
@@ -533,7 +561,7 @@ export function AdminDashboard() {
                                   }
                                   className="flex-1 py-2.5 bg-[var(--color-shu)] text-[var(--color-washi)] text-xs tracking-[0.15em] uppercase font-bold hover:bg-[#a02020] transition-colors cursor-pointer"
                                 >
-                                  → {t(`admin.${nextStatus}`)}
+                                  {t(`admin.${nextStatus}`)}
                                 </button>
                               )}
                               <button
@@ -585,6 +613,16 @@ export function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmCancel}
+        title="Cancel Order"
+        message="Are you sure you want to cancel this order? This will send an automated notification to the customer and cannot be undone."
+        confirmLabel="Cancel Order"
+        cancelLabel="Dismiss"
+      />
     </div>
   );
 }

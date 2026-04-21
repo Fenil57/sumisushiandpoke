@@ -130,6 +130,7 @@ export function Cart() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [isVerifyingPaymentReturn, setIsVerifyingPaymentReturn] = useState(false);
   const [hasRestoredCheckout, setHasRestoredCheckout] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const deliveryFeeSetting = typeof settings.deliveryFee === "number" ? settings.deliveryFee : DEFAULT_DELIVERY_FEE;
   const normalizedDeliveryAddress = deliveryAddress.trim();
@@ -326,7 +327,19 @@ export function Cart() {
   };
 
   const handleProceedToPayment = async () => {
-    if (!customerName.trim() || !customerPhone.trim()) return;
+    const errors: Record<string, string> = {};
+    if (!customerName.trim()) errors.name = t("checkout.nameRequired") || "Name is required";
+    if (!customerPhone.trim()) errors.phone = t("checkout.phoneRequired") || "Phone is required";
+    if (orderType === "delivery" && !normalizedDeliveryAddress) {
+      errors.delivery = t("checkout.deliveryAddressRequired") || "Delivery address is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setFormErrors({});
 
     const validatedQuote = await validateDeliveryAddress();
     if (orderType === "delivery" && !validatedQuote) return;
@@ -578,15 +591,25 @@ export function Cart() {
                     <label className="block text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/50 mb-2">{t("checkout.name")} *</label>
                     <div className="relative">
                       <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/30" />
-                      <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required placeholder={t("checkout.namePlaceholder")} className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/20 text-[var(--color-washi)] px-4 py-3 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors" />
+                      <input type="text" value={customerName} onChange={(e) => { setCustomerName(e.target.value); if (formErrors.name) setFormErrors(prev => ({ ...prev, name: "" })); }} required placeholder={t("checkout.namePlaceholder")} className={`w-full bg-[var(--color-washi)]/[0.05] border text-[var(--color-washi)] px-4 py-3 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors ${formErrors.name ? "border-red-500/50" : "border-[var(--color-washi)]/20"}`} />
                     </div>
+                    {formErrors.name && (
+                      <p className="mt-1 text-[10px] text-red-400 flex items-center gap-1">
+                        <AlertCircle size={10} className="shrink-0" /> {formErrors.name}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/50 mb-2">{t("checkout.phone")} *</label>
                     <div className="relative">
                       <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/30" />
-                      <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required placeholder="+358 44 123 4567" className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/20 text-[var(--color-washi)] px-4 py-3 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors" />
+                      <input type="tel" value={customerPhone} onChange={(e) => { setCustomerPhone(e.target.value); if (formErrors.phone) setFormErrors(prev => ({ ...prev, phone: "" })); }} required placeholder="+358 44 123 4567" className={`w-full bg-[var(--color-washi)]/[0.05] border text-[var(--color-washi)] px-4 py-3 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors ${formErrors.phone ? "border-red-500/50" : "border-[var(--color-washi)]/20"}`} />
                     </div>
+                    {formErrors.phone && (
+                      <p className="mt-1 text-[10px] text-red-400 flex items-center gap-1">
+                        <AlertCircle size={10} className="shrink-0" /> {formErrors.phone}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/50 mb-2">{t("checkout.email")}</label>
@@ -603,10 +626,10 @@ export function Cart() {
                           {isCheckingDelivery ? t("checkout.checkingAddress") : t("checkout.checkAddress")}
                         </button>
                       </div>
-                      <textarea value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} required={orderType === "delivery"} placeholder={t("checkout.deliveryAddressPlaceholder")} className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/20 text-[var(--color-washi)] px-4 py-3 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors resize-none h-24" />
-                      {deliveryAddressError && (
+                      <textarea value={deliveryAddress} onChange={(e) => { setDeliveryAddress(e.target.value); if (formErrors.delivery) setFormErrors(prev => ({ ...prev, delivery: "" })); }} required={orderType === "delivery"} placeholder={t("checkout.deliveryAddressPlaceholder")} className={`w-full bg-[var(--color-washi)]/[0.05] border text-[var(--color-washi)] px-4 py-3 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)] transition-colors resize-none h-24 ${formErrors.delivery || deliveryAddressError ? "border-red-500/50" : "border-[var(--color-washi)]/20"}`} />
+                      {(formErrors.delivery || deliveryAddressError) && (
                         <div className="flex items-center gap-2 text-[10px] text-red-400">
-                          <AlertCircle size={12} /><span>{deliveryAddressError}</span>
+                          <AlertCircle size={10} className="shrink-0" /><span>{formErrors.delivery || deliveryAddressError}</span>
                         </div>
                       )}
                       {hasValidatedDeliveryQuote && deliveryQuote && !deliveryAddressError && (
@@ -644,13 +667,19 @@ export function Cart() {
 
                 {paymentError && (
                   <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 p-3 mb-4">
-                    <AlertCircle size={16} className="text-red-400 shrink-0" />
+                    <AlertCircle size={10} className="text-red-400 shrink-0" />
                     <span className="text-red-400 text-xs">{paymentError}</span>
                   </motion.div>
                 )}
 
                 <div className="flex flex-col gap-3">
-                  <motion.button onClick={handleProceedToPayment} disabled={!customerName.trim() || !customerPhone.trim() || (orderType === "delivery" && !normalizedDeliveryAddress) || isCreatingPayment} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="relative overflow-hidden w-full py-4 bg-[var(--color-shu)] text-[var(--color-washi)] font-serif text-xl tracking-wide hover:bg-[#a02020] transition-colors disabled:opacity-50">
+                  <motion.button 
+                    onClick={handleProceedToPayment} 
+                    disabled={isCreatingPayment} 
+                    whileHover={{ scale: 1.02 }} 
+                    whileTap={{ scale: 0.98 }} 
+                    className="relative overflow-hidden w-full py-4 bg-[var(--color-shu)] text-[var(--color-washi)] font-serif text-xl tracking-wide hover:bg-[#a02020] transition-colors disabled:opacity-50"
+                  >
                     <span className={`transition-opacity duration-300 ${isCreatingPayment ? "opacity-0" : "opacity-100"}`}>
                       {t(
                         isOnlinePaymentEnabled
@@ -660,7 +689,11 @@ export function Cart() {
                     </span>
                     {isCreatingPayment && (
                       <span className="absolute inset-0 flex items-center justify-center">
-                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-5 h-5 border-2 border-[var(--color-shu)]/40 border-t-transparent rounded-full" />
+                        <motion.div 
+                          animate={{ rotate: 360 }} 
+                          transition={{ repeat: Infinity, duration: 1, ease: "linear" }} 
+                          className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full" 
+                        />
                       </span>
                     )}
                   </motion.button>
