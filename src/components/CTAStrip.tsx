@@ -43,7 +43,7 @@ export function CTAStrip() {
           <div className="flex items-center justify-center gap-4 mb-8">
             <span className="w-8 h-[1px] bg-[var(--color-shu)]" />
             <p className="text-xs tracking-[0.4em] uppercase font-medium text-[var(--color-shu)]">
-              {t("hero.authentic")}
+              {t("footer.visitUs")}
             </p>
             <span className="w-8 h-[1px] bg-[var(--color-shu)]" />
           </div>
@@ -84,7 +84,7 @@ export function CTAStrip() {
           </div>
 
           {/* Phone fallback */}
-          <div className="flex items-center justify-center gap-3 text-[var(--color-washi)]/30">
+          <div className="flex items-center justify-center gap-3 text-[var(--color-washi)]/30 mb-12">
             <Phone size={14} className="text-[var(--color-shu)]/60" />
             <span className="text-xs tracking-widest uppercase font-medium">
               {t("reservations.fallback")}{" "}
@@ -95,6 +95,39 @@ export function CTAStrip() {
                 {settings.contactPhone}
               </a>
             </span>
+          </div>
+
+          {/* Opening Hours */}
+          <div className="flex flex-col items-center justify-center pt-8 border-t border-[var(--color-washi)]/10 max-w-lg mx-auto">
+            <h4 className="text-xs tracking-[0.2em] uppercase font-bold text-[var(--color-washi)]/80 mb-6">
+              {t("footer.hours")}
+            </h4>
+            <div className="flex flex-col sm:flex-row gap-6 sm:gap-12 text-sm text-[var(--color-washi)]/60 w-full justify-center text-center sm:text-left">
+              <div className="flex flex-col">
+                <span className="uppercase tracking-widest text-[10px] text-[var(--color-washi)]/40 mb-1">
+                  {t("footer.days1")}
+                </span>
+                <span className="font-medium text-[var(--color-washi)]/80">
+                  {settings.weekdayHours}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="uppercase tracking-widest text-[10px] text-[var(--color-washi)]/40 mb-1">
+                  {t("footer.days2")}
+                </span>
+                <span className="font-medium text-[var(--color-washi)]/80">
+                  {settings.saturdayHours}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="uppercase tracking-widest text-[10px] text-[var(--color-washi)]/40 mb-1">
+                  {t("footer.days3")}
+                </span>
+                <span className="font-medium text-[var(--color-washi)]/80">
+                  {settings.sundayHours}
+                </span>
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>

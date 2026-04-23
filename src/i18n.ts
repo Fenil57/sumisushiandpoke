@@ -18,8 +18,8 @@ const resources = {
       },
       hero: {
         authentic: "Authentic Japanese",
-        trueTaste: "The True Taste",
-        ofUmami: "of Umami",
+        trueTaste: "Authentic Artistry",
+        ofUmami: "of Sumi",
         scroll: "Scroll to explore"
       },
       menu: {
@@ -71,11 +71,11 @@ const resources = {
         step4Title: "Out for Delivery",
         step4Desc: "Handed over to our delivery partners.",
         step5Title: "Delivered",
-        step5Desc: "Arrives fresh and ready to eat. Enjoy the authentic taste of Umami."
+        step5Desc: "Arrives fresh and ready to eat. Experience the true taste of Sumi."
       },
       order: {
         title: "Order Online",
-        subtitle: "Experience the true taste of Umami, delivered to your door.",
+        subtitle: "Experience the authentic artistry of Sumi, delivered to your door.",
         addToOrder: "Add to Order",
         yourOrder: "Your Order",
         emptyCart: "Your cart is empty.",
@@ -287,8 +287,8 @@ const resources = {
       },
       hero: {
         authentic: "Aito Japanilainen",
-        trueTaste: "Todellinen Maku",
-        ofUmami: "Umamia",
+        trueTaste: "Todellinen Sumin",
+        ofUmami: "taide",
         scroll: "Vieritä alaspäin"
       },
       menu: {
@@ -340,11 +340,11 @@ const resources = {
         step4Title: "Kuljetuksessa",
         step4Desc: "Luovutettu kuljetuskumppaneillemme.",
         step5Title: "Toimitettu",
-        step5Desc: "Saapuu tuoreena ja valmiina nautittavaksi. Nauti aidosta Umamin mausta."
+        step5Desc: "Saapuu tuoreena ja valmiina nautittavaksi. Nauti aidosta Sumin mausta."
       },
       order: {
         title: "Tilaa Verkosta",
-        subtitle: "Koe aito Umamin maku, toimitettuna kotiovellesi.",
+        subtitle: "Koe aito Sumin maku, toimitettuna kotiovellesi.",
         addToOrder: "Lisää Tilaukseen",
         yourOrder: "Tilauksesi",
         emptyCart: "Ostoskorisi on tyhjä.",
