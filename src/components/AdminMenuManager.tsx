@@ -13,7 +13,8 @@ import {
 } from '../services/menuService';
 import { uploadMenuItemImage } from '../services/imageUploadService';
 
-const CATEGORIES = ['Sushi', 'Woks', 'Finger Foods', 'Drinks'];
+// Predefined categories as fallback, but we'll also derive them from data
+const DEFAULT_CATEGORIES = ['Sushi', 'Woks', 'Finger Foods', 'Drinks', 'Poke Bowls', 'Appetizers', 'Rice & Noodles', 'Kids Meals', 'Sushi Assortments'];
 
 const EMPTY_ITEM: MenuItem = {
   id: '',
@@ -241,11 +242,19 @@ export function AdminMenuManager() {
     paginatedGroupedItems[item.category].push(item);
   }
 
-  const categoryStats = CATEGORIES.map(cat => ({
+  const allCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...items.map(i => i.category)])).sort();
+
+  const categoryStats = allCategories.map(cat => ({
     name: cat,
     total: items.filter(i => i.category === cat).length,
     available: items.filter(i => i.category === cat && i.is_available).length,
-  }));
+  })).filter(stat => stat.total > 0); // Only show categories that have items
+
+  const totalStats = {
+    total: items.length,
+    available: items.filter(i => i.is_available).length
+  };
+
   const previewImageSrc = imagePreviewUrl || editItem.image_url;
 
   return (
@@ -264,20 +273,49 @@ export function AdminMenuManager() {
         )}
       </AnimatePresence>
 
-      {/* Stats Bar */}
+      {/* Stats & Filter Bar */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 pt-6 pb-2">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+          {/* Total Stats Card / "All" Filter */}
+          <button
+            onClick={() => setFilterCategory('all')}
+            className={`min-w-[140px] p-4 border transition-all text-left cursor-pointer ${
+              filterCategory === 'all'
+                ? "bg-[var(--color-shu)]/20 border-[var(--color-shu)] shadow-[0_0_20px_rgba(235,51,35,0.1)]"
+                : "bg-[var(--color-washi)]/[0.03] border-[var(--color-washi)]/10 hover:border-[var(--color-washi)]/20"
+            }`}
+          >
+            <div className={`text-[10px] tracking-[0.2em] uppercase mb-1 font-bold ${
+              filterCategory === 'all' ? "text-[var(--color-shu)]" : "text-[var(--color-washi)]/30"
+            }`}>
+              All Items
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="font-serif font-bold text-2xl text-[var(--color-washi)]">{totalStats.available}</span>
+              <span className="text-xs text-[var(--color-washi)]/30">/ {totalStats.total}</span>
+            </div>
+          </button>
+
           {categoryStats.map(stat => (
-            <div
+            <button
               key={stat.name}
-              className="bg-[var(--color-washi)]/[0.03] border border-[var(--color-washi)]/10 p-4"
+              onClick={() => setFilterCategory(stat.name)}
+              className={`min-w-[140px] p-4 border transition-all text-left cursor-pointer ${
+                filterCategory === stat.name
+                  ? "bg-[var(--color-shu)]/20 border-[var(--color-shu)] shadow-[0_0_20px_rgba(235,51,35,0.1)]"
+                  : "bg-[var(--color-washi)]/[0.03] border-[var(--color-washi)]/10 hover:border-[var(--color-washi)]/20"
+              }`}
             >
-              <div className="text-[10px] tracking-[0.2em] uppercase text-[var(--color-washi)]/30 mb-1">{stat.name}</div>
+              <div className={`text-[10px] tracking-[0.2em] uppercase mb-1 line-clamp-1 font-bold ${
+                filterCategory === stat.name ? "text-[var(--color-shu)]" : "text-[var(--color-washi)]/30"
+              }`}>
+                {stat.name}
+              </div>
               <div className="flex items-baseline gap-2">
                 <span className="font-serif font-bold text-2xl text-[var(--color-washi)]">{stat.available}</span>
-                <span className="text-xs text-[var(--color-washi)]/30">/ {stat.total} items</span>
+                <span className="text-xs text-[var(--color-washi)]/30">/ {stat.total}</span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -295,21 +333,6 @@ export function AdminMenuManager() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[var(--color-washi)]/[0.03] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-4 py-2.5 pl-10 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors"
             />
-          </div>
-
-          {/* Category Filter */}
-          <div className="relative">
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="appearance-none bg-[var(--color-washi)]/[0.03] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-4 py-2.5 pr-10 text-xs tracking-[0.1em] uppercase focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors cursor-pointer"
-            >
-              <option value="all" className="bg-[var(--color-sumi)] text-[var(--color-washi)]">All Categories</option>
-              {CATEGORIES.map(cat => (
-                <option key={cat} value={cat} className="bg-[var(--color-sumi)] text-[var(--color-washi)]">{cat}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/30 pointer-events-none" />
           </div>
 
           {/* Add Item */}
@@ -657,7 +680,7 @@ export function AdminMenuManager() {
                         onChange={(e) => setEditItem(prev => ({ ...prev, category: e.target.value }))}
                         className="appearance-none w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-4 py-3 text-sm focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors cursor-pointer"
                       >
-                        {CATEGORIES.map(cat => (
+                        {allCategories.map(cat => (
                           <option key={cat} value={cat} className="bg-[var(--color-sumi)] text-[var(--color-washi)]">{cat}</option>
                         ))}
                       </select>

@@ -88,8 +88,16 @@ export function Footer() {
   };
 
   return (
-    <footer className="relative bg-[#1c1c1c] text-[var(--color-washi)] overflow-hidden group" itemScope itemType="https://schema.org/Restaurant" aria-label="Site footer">
-      <div className="absolute inset-0 z-0 overflow-hidden opacity-25 grayscale" aria-hidden="true">
+    <footer
+      className="relative bg-[#1c1c1c] text-[var(--color-washi)] overflow-hidden group"
+      itemScope
+      itemType="https://schema.org/Restaurant"
+      aria-label="Site footer"
+    >
+      <div
+        className="absolute inset-0 z-0 overflow-hidden opacity-25 grayscale"
+        aria-hidden="true"
+      >
         <img
           src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=2000"
           alt=""
@@ -100,7 +108,7 @@ export function Footer() {
       </div>
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-6 pt-24 pb-8 md:pt-32 md:pb-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8 mb-24">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-12 lg:gap-8 mb-24">
           <div className="col-span-1 md:col-span-1">
             <Link to="/" className="mb-6 block">
               <BrandLogo
@@ -142,19 +150,30 @@ export function Footer() {
             <h4 className="text-xs font-bold tracking-[0.2em] uppercase mb-6">
               {t("footer.contact")}
             </h4>
-            <address className="not-italic" itemProp="address" itemScope itemType="https://schema.org/PostalAddress">
+            <address
+              className="not-italic"
+              itemProp="address"
+              itemScope
+              itemType="https://schema.org/PostalAddress"
+            >
               <ul className="space-y-4 text-sm text-[var(--color-washi)]/60">
                 <li className="flex items-start gap-3">
                   <MapPin
                     size={16}
                     className="mt-0.5 shrink-0 text-[var(--color-shu)]"
                   />
-                  <span className="leading-relaxed whitespace-pre-line" itemProp="streetAddress">
+                  <span
+                    className="leading-relaxed whitespace-pre-line"
+                    itemProp="streetAddress"
+                  >
                     {settings.address}
                   </span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Phone size={16} className="shrink-0 text-[var(--color-shu)]" />
+                  <Phone
+                    size={16}
+                    className="shrink-0 text-[var(--color-shu)]"
+                  />
                   <a
                     href={`tel:${settings.contactPhone}`}
                     className="hover:text-[var(--color-shu)] transition-colors cursor-pointer"
@@ -164,7 +183,10 @@ export function Footer() {
                   </a>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Mail size={16} className="shrink-0 text-[var(--color-shu)]" />
+                  <Mail
+                    size={16}
+                    className="shrink-0 text-[var(--color-shu)]"
+                  />
                   <a
                     href={`mailto:${settings.contactEmail}`}
                     className="hover:text-[var(--color-shu)] transition-colors cursor-pointer"
