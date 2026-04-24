@@ -8,10 +8,25 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings();
   const location = useLocation();
 
-  // Always force scroll to top on a brand-new page mount
+  // Handle scroll position on new page mount
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+    if (location.hash) {
+      // Scroll to top initially so the page is ready behind the overlay
+      window.scrollTo(0, 0);
+      // Wait for the transition to finish (1.5s delay + 0.8s sweep = 2.3s)
+      const timeoutId = setTimeout(() => {
+        const id = location.hash.replace('#', '');
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 2400);
+      return () => clearTimeout(timeoutId);
+    } else {
+      // Standard page load without hash
+      window.scrollTo(0, 0);
+    }
+  }, [location.pathname, location.hash]);
 
   return (
     <>

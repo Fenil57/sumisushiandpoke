@@ -112,6 +112,18 @@ export function Navbar() {
     setIsLangMenuOpen(false);
   };
 
+  const handleMenuClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    setIsMobileMenuOpen(false);
+    if (location.pathname === "/") {
+      e.preventDefault();
+      const el = document.getElementById("menu");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+        window.history.pushState(null, "", "/#menu");
+      }
+    }
+  };
+
   return (
     <>
       <nav
@@ -137,6 +149,7 @@ export function Navbar() {
           <div className="hidden nav:flex items-center gap-4 lg:gap-6 xl:gap-10">
             <Link
               to="/#menu"
+              onClick={handleMenuClick}
               className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}
             >
               {t("nav.menu")}
@@ -337,7 +350,7 @@ export function Navbar() {
             <nav className="flex flex-col items-center gap-8 relative z-10" aria-label="Mobile navigation">
               <Link
                 to="/#menu"
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={handleMenuClick}
                 className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors"
               >
                 Home {t("nav.menu")}
