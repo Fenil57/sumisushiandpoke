@@ -9,6 +9,7 @@
   --color-shu: #c92a2a;
   --color-aizome: #1d2b45;
   --color-gold: #d4af37;
+  --breakpoint-nav: 885px;
 }
 
 /* ── Accessibility: Screen-reader only utility ── */
@@ -25,7 +26,7 @@
 }
 
 /* ── Accessibility: Visible focus ring for keyboard users ── */
-*:focus-visible {
+*:focus-visible:not(input, textarea, select) {
   outline: 2px solid var(--color-shu);
   outline-offset: 2px;
 }

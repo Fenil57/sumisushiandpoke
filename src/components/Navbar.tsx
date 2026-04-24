@@ -133,8 +133,8 @@ export function Navbar() {
           />
         </Link>
 
-        <div className="flex items-center gap-3 sm:gap-4 md:gap-6 lg:gap-10">
-          <div className="hidden md:flex items-center gap-4 lg:gap-6 xl:gap-10">
+        <div className="flex items-center gap-3 sm:gap-4 nav:gap-6 lg:gap-10">
+          <div className="hidden nav:flex items-center gap-4 lg:gap-6 xl:gap-10">
             <Link
               to="/#menu"
               className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}
@@ -222,7 +222,7 @@ export function Navbar() {
           </div>
 
           {/* Mobile Menu Toggle & Menu Icon */}
-          <div className="flex items-center gap-4 md:hidden">
+          <div className="flex items-center gap-4 nav:hidden">
             <button
               onClick={() =>
                 changeLanguage(i18n.language === "en" ? "fi" : "en")
@@ -273,7 +273,7 @@ export function Navbar() {
             role="dialog"
             aria-modal="true"
             aria-label="Mobile navigation menu"
-            className="fixed inset-0 z-40 bg-[var(--color-washi)] flex flex-col items-center justify-center gap-8 p-6 md:hidden"
+            className="fixed inset-0 z-40 bg-[var(--color-washi)] flex flex-col items-center justify-center gap-8 p-6 nav:hidden"
           >
             {/* Decorative background elements */}
             <div

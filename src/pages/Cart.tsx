@@ -50,15 +50,62 @@ const CHECKOUT_STORAGE_KEY = "sumi-flatpay-checkout";
 const isOnlinePaymentEnabled =
   import.meta.env.VITE_ENABLE_ONLINE_PAYMENT === "true";
 
-const FINNISH_ADDRESS_REGEX =
-  /^[a-zA-ZäöåÄÖÅ\s\-'.]+?\s+\d+[a-zA-Z]?(?:\s*[,\-]\s*(?:A|B|C|D|E|F|G|H|J|K|L|M|N|O|P|R|S|T|U|V|W|X|Y|Z|Ä|Ö)\d*)?[,\s\n]+\s*\d{4,5}\s+[a-zA-ZäöåÄÖÅ\s\-'.]+(?:[,\n]+\s*Finland)?$/i;
-
+/**
+ * Flexible Finnish address validator.
+ *
+ * Accepts common formats locals actually type:
+ *   "Yo-kylä 23A 22, Turku"
+ *   "Hämeenkatu 12 B 45, 33100 Tampere"
+ *   "Kauppakatu 5, Kaarina, Finland"
+ *   "Eerikinkatu 3a-7, 20100 Turku, Finland"
+ *   "Ratapihankatu 9, Helsinki"
+ *
+ * Rules (intentionally lenient):
+ *  1. Must be at least 8 chars
+ *  2. Must contain letters (street / city name)
+ *  3. Must contain at least one digit (street number)
+ *  4. Must have a street-name-like part followed by a number
+ *  5. Must contain a word that looks like a city name after a comma / newline / postal code
+ */
 function isValidFinnishAddress(address: string): boolean {
-  if (address.length < 10) return false;
-  if (!/\b\d{4,5}\b/.test(address)) return false;
-  if (!/[a-zA-ZäöåÄÖÅ]/.test(address)) return false;
-  if (!/\d/.test(address)) return false;
-  return FINNISH_ADDRESS_REGEX.test(address.trim());
+  const trimmed = address.trim();
+
+  // Basic length guard
+  if (trimmed.length < 8) return false;
+
+  // Must contain at least one letter and one digit
+  if (!/[a-zA-ZäöåÄÖÅ]/.test(trimmed)) return false;
+  if (!/\d/.test(trimmed)) return false;
+
+  // Street part: one or more words (letters, hyphens, dots, apostrophes)
+  // followed by a street number (digit, optionally with a letter suffix)
+  // The number may be followed by apartment/staircase info like "A 22", "B14", "a-7"
+  const streetPattern =
+    /[a-zA-ZäöåÄÖÅ][a-zA-ZäöåÄÖÅ\s\-'.]{1,}\s+\d+/i;
+  if (!streetPattern.test(trimmed)) return false;
+
+  // After the street+number block there should be *something* that looks
+  // like a city — a word of 2+ letters separated by comma, newline, or
+  // a Finnish postal code (optionally).  We split on common delimiters
+  // and look for a "city-like" token.
+  const parts = trimmed.split(/[,\n]+/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return false; // at minimum: street part , city part
+
+  // The last 1-2 parts should contain the city (and optionally "Finland"
+  // or a postal code like 20540).  We just need at least one token that
+  // is purely letters (the city name).
+  const cityCandidate = parts
+    .slice(1) // everything after the street chunk
+    .join(" ")
+    .replace(/\b\d{4,5}\b/g, "")  // strip postal code if present
+    .replace(/\b(finland|suomi|fi)\b/gi, "") // strip country
+    .trim();
+
+  // After stripping postal code & country, there should still be a word
+  // with 2+ letters (the city name).
+  if (!/[a-zA-ZäöåÄÖÅ]{2,}/.test(cityCandidate)) return false;
+
+  return true;
 }
 
 interface DeliveryQuote {
@@ -289,7 +336,7 @@ export function Cart() {
       return null;
     }
     if (!isValidFinnishAddress(normalizedDeliveryAddress)) {
-      setDeliveryAddressError("Invalid address format. Please provide a valid Finnish address (e.g., Streetname 123, 12345 City, Finland).");
+      setDeliveryAddressError("Please enter a valid address with street name, number, and city (e.g., Kauppakatu 5, Turku).");
       return null;
     }
     if (hasValidatedDeliveryQuote && deliveryQuote) return deliveryQuote;

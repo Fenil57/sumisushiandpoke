@@ -37,6 +37,17 @@ const FLATPAY_FALLBACK_CHECKOUT_URL = 'https://checkout.reepay.com/#/session/';
 const SUCCESSFUL_CHARGE_STATES = new Set(['authorized', 'settled']);
 
 // ============================================================================
+// CACHING - Reduce Firestore reads and redundant API calls
+// ============================================================================
+
+// In-memory cache for settings/general (60-second TTL)
+let _settingsCache: { data: SiteSettingsRecord; expiry: number } | null = null;
+const SETTINGS_CACHE_TTL_MS = 60_000;
+
+// In-memory cache for the restaurant's geocoded coordinates (effectively permanent)
+let _restaurantGeoCache: { coordinates: [number, number]; label: string; address: string } | null = null;
+
+// ============================================================================
 // RATE LIMITING - Protect against abuse and API cost explosion
 // ============================================================================
 
@@ -300,6 +311,16 @@ async function requireAdminAuth(req: express.Request, res: express.Response, nex
       throw new Error('Firebase Admin not initialized');
     }
     const decodedToken = await getAuth(adminApp).verifyIdToken(token);
+
+    // SECURITY FIX: Verify the user actually has an admin role in Firestore.
+    // Previously, any authenticated Firebase user could call admin endpoints.
+    const db = requireAdminDb();
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+    if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+      console.warn(`Auth Rejected: User ${decodedToken.uid} (${decodedToken.email}) is not an admin.`);
+      return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+    }
+
     (req as any).user = decodedToken;
     next();
   } catch (error: any) {
@@ -379,6 +400,18 @@ function sanitizeString(value: unknown, maxLength = 500): string {
   return trimmed;
 }
 
+/**
+ * Escape HTML special characters to prevent injection in email templates.
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function toCents(amount: number): number {
   return Math.round(amount * 100);
 }
@@ -403,6 +436,22 @@ async function getSiteSettings() {
     contactPhone: '044 2479393',
     address: 'Kuskinkatu 3, 20780 Kaarina'
   };
+}
+
+/**
+ * Geocode and cache the restaurant's address. The restaurant doesn't move,
+ * so we cache this permanently in memory to avoid redundant Nominatim calls.
+ */
+async function getRestaurantGeocode(restaurantAddress: string): Promise<{ coordinates: [number, number]; label: string } | null> {
+  if (_restaurantGeoCache && _restaurantGeoCache.address === restaurantAddress) {
+    return { coordinates: _restaurantGeoCache.coordinates, label: _restaurantGeoCache.label };
+  }
+
+  const result = await geocodeFinnishAddress(restaurantAddress);
+  if (result) {
+    _restaurantGeoCache = { ...result, address: restaurantAddress };
+  }
+  return result;
 }
 
 function isValidPhone(phone: string): boolean {
@@ -831,18 +880,23 @@ function toRadians(degrees: number): number {
 }
 
 async function fetchSiteSettings(): Promise<SiteSettingsRecord> {
+  // Return cached settings if still valid (60s TTL)
+  if (_settingsCache && Date.now() < _settingsCache.expiry) {
+    return _settingsCache.data;
+  }
+
   const db = requireAdminDb();
   const snapshot = await db.doc(SETTINGS_DOC_PATH).get();
 
-  if (!snapshot.exists) {
-    return {
-      address: DEFAULT_RESTAURANT_ADDRESS,
-      deliveryFee: DEFAULT_DELIVERY_FEE,
-      restaurantName: 'SUMI SUSHI AND POKE',
-    };
-  }
+  const defaults: SiteSettingsRecord = {
+    address: DEFAULT_RESTAURANT_ADDRESS,
+    deliveryFee: DEFAULT_DELIVERY_FEE,
+    restaurantName: 'SUMI SUSHI AND POKE',
+  };
 
-  return snapshot.data() as SiteSettingsRecord;
+  const data = snapshot.exists ? (snapshot.data() as SiteSettingsRecord) : defaults;
+  _settingsCache = { data, expiry: Date.now() + SETTINGS_CACHE_TTL_MS };
+  return data;
 }
 
 async function validateCheckoutPayload(payload: {
@@ -936,9 +990,10 @@ async function validateCheckoutPayload(payload: {
   let matchedCustomerAddress: string | undefined;
 
   if (orderType === 'delivery') {
+    // Use cached restaurant geocode to avoid redundant Nominatim calls
     const [customerLocation, restaurantLocation] = await Promise.all([
       geocodeFinnishAddress(customerAddress),
-      geocodeFinnishAddress(restaurantAddress),
+      getRestaurantGeocode(restaurantAddress),
     ]);
 
     deliveryDistanceMeters = getDistanceMeters(
@@ -1004,45 +1059,44 @@ async function createUnpaidOrder(
     updated_at: now,
   });
 
-  try {
-    await sendOrderNotificationEmail(
-      {
-        orderId: orderRef.id,
-        customerName: checkout.customerInfo.name,
-        customerPhone: checkout.customerInfo.phone,
-        customerEmail: checkout.customerInfo.email,
-        customerAddress:
-          checkout.orderType === 'delivery'
-            ? checkout.customerInfo.address || ''
-            : '',
-        orderType: checkout.orderType,
-        items: checkout.items,
-        subtotal: checkout.subtotal,
-        deliveryFee: checkout.deliveryFee,
-        total: checkout.total,
-        deliveryDistanceMeters: checkout.deliveryDistanceMeters,
-      },
-      req,
-    );
+  // Fire-and-forget: don't block order creation on email delivery
+  const emailOrderData = {
+    orderId: orderRef.id,
+    customerName: checkout.customerInfo.name,
+    customerPhone: checkout.customerInfo.phone,
+    customerEmail: checkout.customerInfo.email,
+    customerAddress:
+      checkout.orderType === 'delivery'
+        ? checkout.customerInfo.address || ''
+        : '',
+    orderType: checkout.orderType,
+    items: checkout.items,
+    subtotal: checkout.subtotal,
+    deliveryFee: checkout.deliveryFee,
+    total: checkout.total,
+    deliveryDistanceMeters: checkout.deliveryDistanceMeters,
+  };
 
-    // Send receipt to customer
-    const settings = await fetchSiteSettings();
-    await sendOrderConfirmationEmail(
-      {
-        orderId: orderRef.id,
-        customerName: checkout.customerInfo.name,
-        customerEmail: checkout.customerInfo.email,
-        orderType: checkout.orderType,
-        items: checkout.items,
-        subtotal: checkout.subtotal,
-        deliveryFee: checkout.deliveryFee,
-        total: checkout.total,
-      },
-      settings,
-    );
-  } catch (error: any) {
+  Promise.all([
+    sendOrderNotificationEmail(emailOrderData, req),
+    fetchSiteSettings().then((settings) =>
+      sendOrderConfirmationEmail(
+        {
+          orderId: orderRef.id,
+          customerName: checkout.customerInfo.name,
+          customerEmail: checkout.customerInfo.email,
+          orderType: checkout.orderType,
+          items: checkout.items,
+          subtotal: checkout.subtotal,
+          deliveryFee: checkout.deliveryFee,
+          total: checkout.total,
+        },
+        settings,
+      ),
+    ),
+  ]).catch((error) => {
     console.error('Failed to send order emails:', error.message);
-  }
+  });
 
   return { orderId: orderRef.id };
 }
@@ -1677,45 +1731,44 @@ async function syncCheckoutFromFlatpay(
   }
 
   if (createdOrderPayload) {
-    try {
-    await sendOrderNotificationEmail(
-        {
-          orderId: createdOrderId,
-          customerName: createdOrderPayload.customer_info.name,
-          customerPhone: createdOrderPayload.customer_info.phone,
-          customerEmail: createdOrderPayload.customer_info.email,
-          customerAddress:
-            createdOrderPayload.order_type === 'delivery'
-              ? createdOrderPayload.customer_info.address || ''
-              : '',
-          orderType: createdOrderPayload.order_type,
-          items: createdOrderPayload.items,
-          subtotal: createdOrderPayload.subtotal_amount,
-          deliveryFee: createdOrderPayload.delivery_fee,
-          total: createdOrderPayload.total_amount,
-          deliveryDistanceMeters: createdOrderPayload.delivery_distance_meters,
-        },
-        req,
-      );
+    // Fire-and-forget: don't block webhook response on email delivery
+    const emailPayload = {
+      orderId: createdOrderId,
+      customerName: createdOrderPayload.customer_info.name,
+      customerPhone: createdOrderPayload.customer_info.phone,
+      customerEmail: createdOrderPayload.customer_info.email,
+      customerAddress:
+        createdOrderPayload.order_type === 'delivery'
+          ? createdOrderPayload.customer_info.address || ''
+          : '',
+      orderType: createdOrderPayload.order_type,
+      items: createdOrderPayload.items,
+      subtotal: createdOrderPayload.subtotal_amount,
+      deliveryFee: createdOrderPayload.delivery_fee,
+      total: createdOrderPayload.total_amount,
+      deliveryDistanceMeters: createdOrderPayload.delivery_distance_meters,
+    };
 
-      // Send receipt to customer
-      const settings = await fetchSiteSettings();
-      await sendOrderConfirmationEmail(
-        {
-          orderId: createdOrderId,
-          customerName: createdOrderPayload.customer_info.name,
-          customerEmail: createdOrderPayload.customer_info.email,
-          orderType: createdOrderPayload.order_type,
-          items: createdOrderPayload.items,
-          subtotal: createdOrderPayload.subtotal_amount,
-          deliveryFee: createdOrderPayload.delivery_fee,
-          total: createdOrderPayload.total_amount,
-        },
-        settings,
-      );
-    } catch (error: any) {
+    Promise.all([
+      sendOrderNotificationEmail(emailPayload, req),
+      fetchSiteSettings().then((settings) =>
+        sendOrderConfirmationEmail(
+          {
+            orderId: createdOrderId,
+            customerName: createdOrderPayload.customer_info.name,
+            customerEmail: createdOrderPayload.customer_info.email,
+            orderType: createdOrderPayload.order_type,
+            items: createdOrderPayload.items,
+            subtotal: createdOrderPayload.subtotal_amount,
+            deliveryFee: createdOrderPayload.delivery_fee,
+            total: createdOrderPayload.total_amount,
+          },
+          settings,
+        ),
+      ),
+    ]).catch((error) => {
       console.error('Failed to send order emails:', error.message);
-    }
+    });
   }
 
   return {
@@ -1813,7 +1866,7 @@ app.post('/api/flatpay/session', checkoutLimiter, async (req, res) => {
   }
 });
 
-app.post('/api/orders/manual', checkoutLimiter, async (req, res) => {
+app.post('/api/orders/manual', requireAdminAuth, checkoutLimiter, async (req, res) => {
   try {
     requireAdminDb();
 
@@ -2419,6 +2472,40 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
+
+// ============================================================================
+// STARTUP ENVIRONMENT VALIDATION
+// Fail loudly at boot if critical config is missing.
+// ============================================================================
+const REQUIRED_ENV_VARS = [
+  'FIREBASE_ADMIN_PROJECT_ID',
+  'FIREBASE_ADMIN_CLIENT_EMAIL',
+  'FIREBASE_ADMIN_PRIVATE_KEY',
+];
+
+const OPTIONAL_ENV_WARNINGS = [
+  { key: 'FLATPAY_PRIVATE_API_KEY', label: 'Flatpay payments' },
+  { key: 'FLATPAY_WEBHOOK_USERNAME', label: 'Flatpay webhook auth' },
+  { key: 'FLATPAY_WEBHOOK_PASSWORD', label: 'Flatpay webhook auth' },
+  { key: 'SMTP_HOST', label: 'Email notifications' },
+  { key: 'SMTP_USER', label: 'Email notifications' },
+  { key: 'SMTP_PASS', label: 'Email notifications' },
+];
+
+const missingRequired = REQUIRED_ENV_VARS.filter((key) => !process.env[key]?.trim());
+if (missingRequired.length > 0 && process.env.NODE_ENV === 'production') {
+  console.error(`\n❌ FATAL: Missing required environment variables: ${missingRequired.join(', ')}`);
+  console.error('   The server cannot start without Firebase Admin credentials in production.\n');
+  process.exit(1);
+} else if (missingRequired.length > 0) {
+  console.warn(`\n⚠️  Missing env vars (non-fatal in dev): ${missingRequired.join(', ')}`);
+}
+
+for (const { key, label } of OPTIONAL_ENV_WARNINGS) {
+  if (!process.env[key]?.trim()) {
+    console.warn(`   ⚠️  ${key} not set — ${label} will be disabled.`);
+  }
+}
 
 initEmailTransporter();
 
