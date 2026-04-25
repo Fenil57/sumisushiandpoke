@@ -55,12 +55,12 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
             {settings.restaurantKanji}
           </div>
           
-          <div className="relative z-10">
+          <div className="relative z-10 w-full max-w-[calc(100vw-3rem)]">
             <BrandLogo
               stacked
               imageClassName="h-20 w-20 object-contain"
-              textClassName="text-3xl md:text-5xl font-serif font-bold tracking-[0.16em] text-[#f9f6f0] leading-tight"
-              subtextClassName="text-xs md:text-sm tracking-[0.4em] uppercase text-[#c92a2a] mt-2"
+              textClassName="text-[clamp(1.45rem,6vw,3rem)] md:text-5xl font-serif font-bold tracking-[0.08em] sm:tracking-[0.14em] md:tracking-[0.16em] text-[#f9f6f0] leading-tight break-words"
+              subtextClassName="text-[clamp(0.65rem,2.4vw,0.875rem)] md:text-sm tracking-[0.28em] sm:tracking-[0.4em] uppercase text-[#c92a2a] mt-2"
             />
             <motion.div 
               className="absolute inset-0 bg-[#c92a2a] blur-2xl opacity-20"
