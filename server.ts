@@ -100,6 +100,11 @@ interface MenuItemRecord {
   name?: string;
   price?: number;
   is_available?: boolean;
+  variations?: {
+    id?: string;
+    label?: string;
+    price?: number;
+  }[];
 }
 
 interface SiteSettingsRecord {
@@ -111,6 +116,7 @@ interface SiteSettingsRecord {
 interface CheckoutItemInput {
   menu_item_id?: string;
   id?: string;
+  variation_id?: string;
   quantity?: number;
 }
 
@@ -123,6 +129,8 @@ interface CustomerInfoInput {
 
 interface OrderItemSnapshot {
   menu_item_id: string;
+  variation_id?: string;
+  variation_label?: string;
   name: string;
   price: number;
   quantity: number;
@@ -932,6 +940,7 @@ async function validateCheckoutPayload(payload: {
 
   const normalizedCart = rawCart.map((entry) => {
     const menuItemId = sanitizeString(entry.menu_item_id || entry.id);
+    const variationId = sanitizeString(entry.variation_id);
     const quantity = Number(entry.quantity || 0);
 
     if (!menuItemId) {
@@ -942,7 +951,7 @@ async function validateCheckoutPayload(payload: {
       throw new Error('One or more cart item quantities are invalid.');
     }
 
-    return { menu_item_id: menuItemId, quantity };
+    return { menu_item_id: menuItemId, variation_id: variationId || undefined, quantity };
   });
 
   const dedupedIds = [...new Set(normalizedCart.map((item) => item.menu_item_id))];
@@ -970,14 +979,35 @@ async function validateCheckoutPayload(payload: {
       throw new Error(`"${menuRecord.name || item.menu_item_id}" is currently unavailable.`);
     }
 
-    if (typeof menuRecord.price !== 'number' || Number.isNaN(menuRecord.price)) {
+    const variations = Array.isArray(menuRecord.variations)
+      ? menuRecord.variations.filter(
+          (variation) =>
+            variation.id &&
+            variation.label &&
+            typeof variation.price === 'number' &&
+            !Number.isNaN(variation.price),
+        )
+      : [];
+    const selectedVariation = variations.length > 0
+      ? variations.find((variation) => variation.id === item.variation_id) || (!item.variation_id ? variations[0] : undefined)
+      : undefined;
+    const price = selectedVariation?.price ?? menuRecord.price;
+    const variationLabel = selectedVariation?.label;
+
+    if (variations.length > 0 && item.variation_id && !selectedVariation) {
+      throw new Error(`"${menuRecord.name || item.menu_item_id}" has an invalid size selection.`);
+    }
+
+    if (typeof price !== 'number' || Number.isNaN(price)) {
       throw new Error(`"${menuRecord.name || item.menu_item_id}" has an invalid price.`);
     }
 
     return {
       menu_item_id: item.menu_item_id,
-      name: menuRecord.name || item.menu_item_id,
-      price: menuRecord.price,
+      variation_id: selectedVariation?.id,
+      variation_label: variationLabel,
+      name: variationLabel ? `${menuRecord.name || item.menu_item_id} (${variationLabel})` : menuRecord.name || item.menu_item_id,
+      price,
       quantity: item.quantity,
     };
   });

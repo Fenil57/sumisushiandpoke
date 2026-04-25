@@ -210,7 +210,7 @@ const resources = {
         catPeople: "People"
       },
       reservations: {
-        tag: "Reservations",
+        tag: "Book a Table",
         title: "Book a",
         titleItalic: "Table",
         subtitle: "Reserve your table and experience authentic Japanese cuisine in a warm, intimate setting.",
@@ -479,7 +479,7 @@ const resources = {
         catPeople: "Henkilökunta"
       },
       reservations: {
-        tag: "Varaukset",
+        tag: "Varaa Pöytä",
         title: "Varaa",
         titleItalic: "Pöytä",
         subtitle: "Varaa pöytäsi ja koe aito japanilainen keittiö lämpimässä, intiimissä ympäristössä.",

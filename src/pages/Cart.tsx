@@ -403,8 +403,9 @@ export function Cart() {
           phone: customerPhone,
           address: orderType === "delivery" ? normalizedDeliveryAddress : undefined,
         },
-        order_items: cart.map(({ item, quantity }) => ({
+        order_items: cart.map(({ item, variation, quantity }) => ({
           menu_item_id: item.id,
+          variation_id: variation.id,
           quantity,
         })),
       };
@@ -527,30 +528,37 @@ export function Cart() {
             ) : (
               <div className="divide-y divide-[var(--color-sumi)]/10">
                 <AnimatePresence mode="popLayout">
-                  {cart.map(({ item, quantity }) => (
-                    <motion.div layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} key={item.id} className="flex gap-4 py-6 first:pt-0 last:pb-0">
+                  {cart.map(({ id, item, variation, quantity }) => (
+                    <motion.div layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} key={id} className="flex gap-4 py-6 first:pt-0 last:pb-0">
                       <div className="w-24 h-24 shrink-0 bg-[var(--color-sumi)]/5">
-                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[var(--color-sumi)]/20">
+                            <RamenBowlIcon className="w-8 h-8" />
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 flex flex-col justify-between">
                         <div className="flex justify-between items-start gap-4">
                           <div>
                             <h3 className="font-serif font-bold text-xl text-[var(--color-sumi)]">{item.name}</h3>
+                            <p className="text-xs text-[var(--color-shu)] uppercase tracking-[0.15em] font-bold mt-1">{variation.label}</p>
                             <p className="text-sm text-[var(--color-sumi)]/60 line-clamp-1">{item.description}</p>
                           </div>
-                          <span className="font-medium text-[var(--color-sumi)]/80">€{(item.price * quantity).toFixed(2)}</span>
+                          <span className="font-medium text-[var(--color-sumi)]/80">€{(variation.price * quantity).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center mt-4">
                           <div className="flex items-center gap-3">
-                            <button onClick={() => removeOneFromCart(item.id)} className="w-8 h-8 rounded-full border border-[var(--color-sumi)]/20 flex items-center justify-center text-[var(--color-sumi)] hover:bg-[var(--color-shu)] hover:border-[var(--color-shu)] hover:text-[var(--color-washi)] transition-colors">
+                            <button onClick={() => removeOneFromCart(id)} className="w-8 h-8 rounded-full border border-[var(--color-sumi)]/20 flex items-center justify-center text-[var(--color-sumi)] hover:bg-[var(--color-shu)] hover:border-[var(--color-shu)] hover:text-[var(--color-washi)] transition-colors">
                               <Minus size={16} />
                             </button>
                             <span className="font-medium text-[var(--color-sumi)] w-4 text-center">{quantity}</span>
-                            <button onClick={() => addToCart(item)} className="w-8 h-8 rounded-full border border-[var(--color-sumi)]/20 flex items-center justify-center text-[var(--color-sumi)] hover:bg-[var(--color-shu)] hover:border-[var(--color-shu)] hover:text-[var(--color-washi)] transition-colors">
+                            <button onClick={() => addToCart(item, variation)} className="w-8 h-8 rounded-full border border-[var(--color-sumi)]/20 flex items-center justify-center text-[var(--color-sumi)] hover:bg-[var(--color-shu)] hover:border-[var(--color-shu)] hover:text-[var(--color-washi)] transition-colors">
                               <Plus size={16} />
                             </button>
                           </div>
-                          <button onClick={() => removeFromCart(item.id)} className="text-[var(--color-sumi)]/40 hover:text-[var(--color-shu)] text-[10px] uppercase tracking-widest transition-colors font-medium">
+                          <button onClick={() => removeFromCart(id)} className="text-[var(--color-sumi)]/40 hover:text-[var(--color-shu)] text-[10px] uppercase tracking-widest transition-colors font-medium">
                             {t("order.remove")}
                           </button>
                         </div>

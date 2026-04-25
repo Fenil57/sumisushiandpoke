@@ -13,6 +13,8 @@
     "seed": "tsx scripts/smartSeed.ts",
     "seed:full": "tsx scripts/seedFullMenu.ts",
     "seed:smart": "tsx scripts/smartSeed.ts",
+    "seed:prod": "npx cross-env USE_PROD=true tsx scripts/seedFullMenu.ts",
+    "seed:smart:prod": "npx cross-env USE_PROD=true tsx scripts/smartSeed.ts",
     "audit:menu-images": "node scripts/audit-menu-images.cjs",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"

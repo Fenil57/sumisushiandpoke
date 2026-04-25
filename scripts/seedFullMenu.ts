@@ -11,7 +11,9 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 
-dotenv.config({ path: ['.env.local', '.env'] });
+// If USE_PROD is set, only load the main .env (skipping .env.local)
+const envPath = process.env.USE_PROD === 'true' ? '.env' : ['.env.local', '.env'];
+dotenv.config({ path: envPath });
 
 const firebaseConfig = {
   apiKey: process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY,

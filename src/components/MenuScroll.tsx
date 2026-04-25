@@ -2,7 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { getMenuItems, type MenuItem } from "../services/menuService";
+import {
+  getDefaultMenuItemVariation,
+  getMenuItemPriceRange,
+  getMenuItems,
+  type MenuItem,
+} from "../services/menuService";
 import { useCart } from "../context/CartContext";
 
 
@@ -37,7 +42,7 @@ export function MenuScroll() {
   const handleAddToCart = (e: React.MouseEvent, item: MenuItem) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(item);
+    addToCart(item, getDefaultMenuItemVariation(item));
     setAddedItemId(item.id);
     setTimeout(() => setAddedItemId(null), 2000);
   };
@@ -97,7 +102,8 @@ export function MenuScroll() {
           {featuredItems.map((item, idx) => {
             const isActive = activeIndex === idx;
             const isAdded = addedItemId === item.id;
-            const cartItem = cart.find((i) => i.item.id === item.id);
+            const defaultVariation = getDefaultMenuItemVariation(item);
+            const cartItem = cart.find((i) => i.item.id === item.id && i.variation.id === defaultVariation.id);
             const isInCart = !!cartItem;
             const cartQuantity = cartItem?.quantity || 0;
             return (
@@ -111,12 +117,18 @@ export function MenuScroll() {
                 onMouseEnter={() => setActiveIndex(idx)}
                 onClick={() => setActiveIndex(idx)}
               >
-                <img
-                  src={item.image_url}
-                  alt={item.name}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110"
-                  referrerPolicy="no-referrer"
-                />
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={item.name}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-[var(--color-sumi)] flex items-center justify-center text-[#f9f6f0]/20">
+                    <span className="font-serif text-5xl tracking-[0.2em]">SUMI</span>
+                  </div>
+                )}
 
                 <div
                   className={`absolute inset-0 bg-gradient-to-t from-[#1c1c1c]/90 via-[#1c1c1c]/20 to-transparent transition-opacity duration-700 ${isActive ? "opacity-100" : "opacity-60"}`}
@@ -145,7 +157,7 @@ export function MenuScroll() {
 
                         <div className="flex items-center justify-between mt-auto pt-4 border-t border-[#f9f6f0]/20">
                           <span className="text-xl md:text-2xl text-[#f9f6f0] font-medium">
-                            EUR {item.price.toFixed(2)}
+                            {getMenuItemPriceRange(item)}
                           </span>
                           <button
                             onClick={(e) => handleAddToCart(e, item)}

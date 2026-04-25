@@ -17,6 +17,8 @@ export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
 
 export interface OrderItem {
   menu_item_id: string;
+  variation_id?: string;
+  variation_label?: string;
   name: string;
   price: number;
   quantity: number;

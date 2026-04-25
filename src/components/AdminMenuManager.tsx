@@ -6,10 +6,13 @@ import {
 } from 'lucide-react';
 import {
   getAllMenuItems,
+  getMenuItemPriceRange,
+  getMenuItemVariations,
   upsertMenuItem,
   deleteMenuItem,
   toggleMenuItemAvailability,
   type MenuItem,
+  type MenuItemVariation,
 } from '../services/menuService';
 import { uploadMenuItemImage } from '../services/imageUploadService';
 
@@ -21,6 +24,7 @@ const EMPTY_ITEM: MenuItem = {
   name: '',
   description: '',
   price: 0,
+  variations: [{ id: 'regular', label: 'Regular', price: 0 }],
   category: 'Sushi',
   image_url: '',
   is_available: true,
@@ -31,6 +35,14 @@ const EMPTY_ITEM: MenuItem = {
 
 type ModalMode = 'create' | 'edit' | null;
 const isMenuImageUploadEnabled = import.meta.env.VITE_ENABLE_MENU_IMAGE_UPLOAD === 'true';
+
+const makeVariationId = () => `var-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+
+function getEditableVariations(item: MenuItem): MenuItemVariation[] {
+  return item.variations && item.variations.length > 0
+    ? item.variations
+    : [{ id: 'regular', label: 'Regular', price: item.price || 0 }];
+}
 
 export function AdminMenuManager() {
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -97,6 +109,7 @@ export function AdminMenuManager() {
   const handleOpenCreate = () => {
     setEditItem({
       ...EMPTY_ITEM,
+      variations: [{ id: makeVariationId(), label: 'Regular', price: 0 }],
       sort_order: items.filter(i => i.category === 'Sushi').length + 1,
     });
     setTagInput('');
@@ -106,7 +119,7 @@ export function AdminMenuManager() {
   };
 
   const handleOpenEdit = (item: MenuItem) => {
-    setEditItem({ ...item });
+    setEditItem({ ...item, variations: getMenuItemVariations(item) });
     setTagInput('');
     setImageFile(null);
     setImagePreviewUrl(null);
@@ -127,8 +140,16 @@ export function AdminMenuManager() {
       showToast('Name is required');
       return;
     }
-    if (editItem.price <= 0) {
-      showToast('Price must be greater than 0');
+    const normalizedVariations = getEditableVariations(editItem).map((variation) => ({
+      ...variation,
+      label: variation.label.trim(),
+    }));
+    if (normalizedVariations.length === 0) {
+      showToast('At least one size/price option is required');
+      return;
+    }
+    if (normalizedVariations.some((variation) => !variation.label || variation.price <= 0)) {
+      showToast('Each size needs a label and price greater than 0');
       return;
     }
 
@@ -147,6 +168,8 @@ export function AdminMenuManager() {
       const itemToSave = {
         ...editItem,
         image_url: imageUrl,
+        variations: normalizedVariations,
+        price: normalizedVariations[0].price,
         id: modalMode === 'create' ? generateId(editItem.name) : editItem.id,
       };
       await upsertMenuItem(itemToSave);
@@ -196,6 +219,44 @@ export function AdminMenuManager() {
 
   const handleRemoveTag = (tag: string) => {
     setEditItem(prev => ({ ...prev, tags: (prev.tags || []).filter(t => t !== tag) }));
+  };
+
+  const handleAddVariation = () => {
+    setEditItem(prev => ({
+      ...prev,
+      variations: [
+        ...getEditableVariations(prev),
+        { id: makeVariationId(), label: '', price: 0 },
+      ],
+    }));
+  };
+
+  const handleUpdateVariation = (
+    variationId: string,
+    field: keyof Pick<MenuItemVariation, 'label' | 'price'>,
+    value: string,
+  ) => {
+    setEditItem(prev => ({
+      ...prev,
+      variations: getEditableVariations(prev).map(variation =>
+        variation.id === variationId
+          ? {
+              ...variation,
+              [field]: field === 'price' ? parseFloat(value) || 0 : value,
+            }
+          : variation,
+      ),
+    }));
+  };
+
+  const handleRemoveVariation = (variationId: string) => {
+    setEditItem(prev => {
+      const nextVariations = getEditableVariations(prev).filter(variation => variation.id !== variationId);
+      return {
+        ...prev,
+        variations: nextVariations.length > 0 ? nextVariations : [{ id: makeVariationId(), label: 'Regular', price: prev.price || 0 }],
+      };
+    });
   };
 
   // Filtering
@@ -433,7 +494,7 @@ export function AdminMenuManager() {
 
                       {/* Price */}
                       <div className="font-serif font-bold text-[var(--color-washi)] whitespace-nowrap">
-                        €{item.price.toFixed(2)}
+                        {getMenuItemPriceRange(item)}
                       </div>
 
                       {/* Actions */}
@@ -653,39 +714,69 @@ export function AdminMenuManager() {
                   />
                 </div>
 
-                {/* Price + Category Row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/40 mb-2">
+                {/* Sizes / Prices */}
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <label className="block text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/40">
                       <DollarSign size={12} className="inline mr-1.5 -mt-0.5" />
-                      Price (€) *
+                      Sizes & Prices *
                     </label>
-                    <input
-                      type="number"
-                      step="0.50"
-                      min="0"
-                      value={editItem.price || ''}
-                      onChange={(e) => setEditItem(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                      placeholder="0.00"
-                      className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-4 py-3 text-sm placeholder:text-[var(--color-washi)]/15 focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors font-serif font-bold"
-                    />
+                    <button
+                      type="button"
+                      onClick={handleAddVariation}
+                      className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-[var(--color-shu)] hover:text-[var(--color-washi)] transition-colors cursor-pointer"
+                    >
+                      <Plus size={12} /> Add Size
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/40 mb-2">
-                      Category *
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={editItem.category}
-                        onChange={(e) => setEditItem(prev => ({ ...prev, category: e.target.value }))}
-                        className="appearance-none w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-4 py-3 text-sm focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors cursor-pointer"
-                      >
-                        {allCategories.map(cat => (
-                          <option key={cat} value={cat} className="bg-[var(--color-sumi)] text-[var(--color-washi)]">{cat}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/30 pointer-events-none" />
-                    </div>
+                  <div className="space-y-2">
+                    {getEditableVariations(editItem).map((variation) => (
+                      <div key={variation.id} className="grid grid-cols-[1fr_120px_36px] gap-2">
+                        <input
+                          type="text"
+                          value={variation.label}
+                          onChange={(e) => handleUpdateVariation(variation.id, 'label', e.target.value)}
+                          placeholder="Regular, 5 pcs, 1.5 L..."
+                          className="min-w-0 bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-3 py-2.5 text-sm placeholder:text-[var(--color-washi)]/15 focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors"
+                        />
+                        <input
+                          type="number"
+                          step="0.10"
+                          min="0"
+                          value={variation.price || ''}
+                          onChange={(e) => handleUpdateVariation(variation.id, 'price', e.target.value)}
+                          placeholder="0.00"
+                          className="bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-3 py-2.5 text-sm placeholder:text-[var(--color-washi)]/15 focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors font-serif font-bold"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVariation(variation.id)}
+                          className="flex items-center justify-center border border-[var(--color-washi)]/10 text-[var(--color-washi)]/25 hover:text-red-400 hover:border-red-400/30 transition-colors cursor-pointer"
+                          title="Remove size"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/40 mb-2">
+                    Category *
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={editItem.category}
+                      onChange={(e) => setEditItem(prev => ({ ...prev, category: e.target.value }))}
+                      className="appearance-none w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-4 py-3 text-sm focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors cursor-pointer"
+                    >
+                      {allCategories.map(cat => (
+                        <option key={cat} value={cat} className="bg-[var(--color-sumi)] text-[var(--color-washi)]">{cat}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-washi)]/30 pointer-events-none" />
                   </div>
                 </div>
 
@@ -801,7 +892,11 @@ export function AdminMenuManager() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={isSaving || !editItem.name.trim() || editItem.price <= 0}
+                  disabled={
+                    isSaving ||
+                    !editItem.name.trim() ||
+                    getEditableVariations(editItem).some(variation => !variation.label.trim() || variation.price <= 0)
+                  }
                   className="flex items-center gap-2 px-6 py-2.5 bg-[var(--color-shu)] text-[var(--color-washi)] text-xs tracking-[0.15em] uppercase font-bold hover:bg-[#a02020] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSaving ? (

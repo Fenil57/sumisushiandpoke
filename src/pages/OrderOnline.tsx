@@ -2,7 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { getMenuItems, type MenuItem } from "../services/menuService";
+import {
+  getDefaultMenuItemVariation,
+  getMenuItemPriceRange,
+  getMenuItemVariations,
+  getMenuItems,
+  type MenuItem,
+} from "../services/menuService";
 import { useCart } from "../context/CartContext";
 import { SEOHead } from "../components/SEOHead";
 
@@ -136,6 +142,9 @@ export function OrderOnline() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [menuLoadError, setMenuLoadError] = useState<string | null>(null);
   const [displayLimit, setDisplayLimit] = useState(10);
+  const [selectedVariationIds, setSelectedVariationIds] = useState<
+    Record<string, string>
+  >({});
   const ITEMS_PER_PAGE = 10;
   const loaderRef = useRef<HTMLDivElement>(null);
 
@@ -200,7 +209,7 @@ export function OrderOnline() {
           setDisplayLimit((prev) => prev + ITEMS_PER_PAGE);
         }
       },
-      { threshold: 0.1 }
+      { rootMargin: "900px 0px", threshold: 0 },
     );
 
     if (loaderRef.current) {
@@ -221,7 +230,7 @@ export function OrderOnline() {
     if (itemId) {
       const itemToAdd = menuItems.find((item) => item.id === itemId);
       if (itemToAdd) {
-        addToCart(itemToAdd);
+        addToCart(itemToAdd, getDefaultMenuItemVariation(itemToAdd));
         hasAddedFromUrl.current = true;
 
         // Clean the URL without reloading the page
@@ -233,7 +242,14 @@ export function OrderOnline() {
         });
       }
     }
-  }, [isLoadingMenu, menuItems, location.search, navigate, addToCart, location.pathname]);
+  }, [
+    isLoadingMenu,
+    menuItems,
+    location.search,
+    navigate,
+    addToCart,
+    location.pathname,
+  ]);
 
   // Pagination/Infinite scroll logic
   const paginatedMenu = filteredMenu.slice(0, displayLimit);
@@ -268,7 +284,9 @@ export function OrderOnline() {
       ></div>
 
       <div className="fixed -left-10 md:-left-20 top-1/4 opacity-[0.03] md:opacity-[0.04] pointer-events-none z-0 select-none">
-        <span className="text-[20rem] md:text-[40rem] font-serif leading-none">味</span>
+        <span className="text-[20rem] md:text-[40rem] font-serif leading-none">
+          味
+        </span>
       </div>
 
       <div className="fixed left-4 md:left-10 top-1/2 -translate-y-1/2 opacity-[0.05] md:opacity-[0.1] pointer-events-none z-0 select-none">
@@ -341,7 +359,7 @@ export function OrderOnline() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="mb-8 md:mb-16 border-b border-[var(--color-sumi)]/10 pb-8 relative"
+            className="mb-4 md:mb-8 border-b border-[var(--color-sumi)]/10 pb-8 relative"
           >
             <div className="absolute -left-4 top-2 w-1 h-12 bg-[var(--color-shu)] hidden md:block"></div>
             <h1 className="text-4xl md:text-7xl font-serif font-bold tracking-tight text-[var(--color-sumi)] mb-4">
@@ -399,76 +417,118 @@ export function OrderOnline() {
               className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12"
             >
               <AnimatePresence mode="popLayout">
-                {paginatedMenu.map((item, idx) => (
-                  <motion.div
-                    layout
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                    transition={{ duration: 0.4, delay: idx * 0.05 }}
-                    key={item.id}
-                    className="group flex flex-col sm:flex-row gap-6 p-4 -mx-4 hover:bg-[var(--color-sumi)]/[0.02] transition-colors relative"
-                  >
-                    {/* Decorative corner accents */}
-                    <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-[var(--color-shu)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-[var(--color-shu)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                {paginatedMenu.map((item, idx) => {
+                  const variations = getMenuItemVariations(item);
+                  const selectedVariation =
+                    variations.find(
+                      (variation) =>
+                        variation.id === selectedVariationIds[item.id],
+                    ) || variations[0];
+                  return (
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                      transition={{ duration: 0.4, delay: idx * 0.05 }}
+                      key={item.id}
+                      className="group flex flex-col sm:flex-row gap-6 p-4 -mx-4 hover:bg-[var(--color-sumi)]/[0.02] transition-colors relative"
+                    >
+                      {/* Decorative corner accents */}
+                      <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-[var(--color-shu)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-[var(--color-shu)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                    <div className="w-full sm:w-36 h-48 sm:h-36 overflow-hidden shrink-0 relative shadow-sm">
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-[var(--color-sumi)]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="w-full sm:w-36 h-48 sm:h-36 overflow-hidden shrink-0 relative shadow-sm bg-[var(--color-sumi)]/5">
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[var(--color-sumi)]/20">
+                            <RamenBowlIcon className="w-10 h-10" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-[var(--color-sumi)]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                      {/* Decorative corner stamp on image */}
-                      <div className="absolute top-0 right-0 w-8 h-8 bg-[var(--color-shu)]/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                        <span
-                          className="text-[var(--color-shu)] text-[8px] font-serif leading-none"
-                          style={{ writingMode: "vertical-rl" }}
-                        >
-                          厳選
-                        </span>
-                      </div>
-
-                      {item.tags && item.tags.length > 0 && (
-                        <div className="absolute top-2 left-2 flex flex-col gap-1">
-                          {item.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="bg-[var(--color-shu)] text-[var(--color-washi)] text-[9px] uppercase tracking-widest px-2 py-1 font-bold shadow-sm"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 flex flex-col justify-between py-1">
-                      <div>
-                        <div className="flex justify-between items-start mb-2 gap-4">
-                          <h3 className="font-serif font-bold text-xl text-[var(--color-sumi)] group-hover:text-[var(--color-shu)] transition-colors">
-                            {item.name}
-                          </h3>
-                          <span className="font-medium text-[var(--color-sumi)]/80 whitespace-nowrap border-b border-[var(--color-sumi)]/10 pb-1">
-                            €{item.price.toFixed(2)}
+                        {/* Decorative corner stamp on image */}
+                        <div className="absolute top-0 right-0 w-8 h-8 bg-[var(--color-shu)]/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                          <span
+                            className="text-[var(--color-shu)] text-[8px] font-serif leading-none"
+                            style={{ writingMode: "vertical-rl" }}
+                          >
+                            厳選
                           </span>
                         </div>
-                        <p className="text-sm text-[var(--color-sumi)]/60 line-clamp-2 leading-relaxed mb-4">
-                          {item.description}
-                        </p>
+
+                        {item.tags && item.tags.length > 0 && (
+                          <div className="absolute top-2 left-2 flex flex-col gap-1">
+                            {item.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="bg-[var(--color-shu)] text-[var(--color-washi)] text-[9px] uppercase tracking-widest px-2 py-1 font-bold shadow-sm"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="self-start mt-auto text-xs tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors flex items-center gap-2 group/btn cursor-pointer"
-                      >
-                        <span className="w-6 h-[1px] bg-current transition-all duration-300 group-hover/btn:w-10"></span>{" "}
-                        {t("order.addToOrder")}
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
+                      <div className="flex-1 flex flex-col justify-between py-1">
+                        <div>
+                          <div className="flex justify-between items-start mb-2 gap-4">
+                            <h3 className="font-serif font-bold text-xl text-[var(--color-sumi)] group-hover:text-[var(--color-shu)] transition-colors">
+                              {item.name}
+                            </h3>
+                            <span className="font-medium text-[var(--color-sumi)]/80 whitespace-nowrap border-b border-[var(--color-sumi)]/10 pb-1">
+                              {getMenuItemPriceRange(item)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-[var(--color-sumi)]/60 line-clamp-2 leading-relaxed mb-4">
+                            {item.description}
+                          </p>
+                        </div>
+                        {variations.length > 1 && (
+                          <div className="mb-4 grid grid-cols-2 gap-2">
+                            {variations.map((variation) => (
+                              <button
+                                key={variation.id}
+                                type="button"
+                                onClick={() =>
+                                  setSelectedVariationIds((prev) => ({
+                                    ...prev,
+                                    [item.id]: variation.id,
+                                  }))
+                                }
+                                className={`border px-3 py-2 text-left transition-colors cursor-pointer ${
+                                  selectedVariation.id === variation.id
+                                    ? "border-[var(--color-shu)] bg-[var(--color-shu)]/10 text-[var(--color-shu)]"
+                                    : "border-[var(--color-sumi)]/10 text-[var(--color-sumi)]/60 hover:border-[var(--color-sumi)]/30"
+                                }`}
+                              >
+                                <span className="block text-[10px] uppercase tracking-[0.15em] font-bold truncate">
+                                  {variation.label}
+                                </span>
+                                <span className="block text-xs mt-0.5">
+                                  €{variation.price.toFixed(2)}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => addToCart(item, selectedVariation)}
+                          className="self-start mt-auto text-xs tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors flex items-center gap-2 group/btn cursor-pointer"
+                        >
+                          <span className="w-6 h-[1px] bg-current transition-all duration-300 group-hover/btn:w-10"></span>{" "}
+                          {t("order.addToOrder")}
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </motion.div>
           )}

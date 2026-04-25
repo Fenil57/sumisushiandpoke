@@ -2,20 +2,55 @@
   {
     "id": "1-gyoza",
     "name": "Gyoza",
-    "description": "Fried chicken, vegetables, kimchi, choice of dip. Sizes: 5 pcs (5.90€), 10 pcs (10.90€), 15 pcs (12.90€)",
+    "description": "Fried chicken, vegetables, kimchi. Choice of dip.",
     "price": 5.9,
-    "category": "Finger Foods",
+    "variations": [
+      {
+        "id": "v-1a",
+        "label": "5 pcs",
+        "price": 5.9
+      },
+      {
+        "id": "v-1b",
+        "label": "10 pcs",
+        "price": 10.9
+      },
+      {
+        "id": "v-1c",
+        "label": "15 pcs",
+        "price": 12.9
+      }
+    ],
+    "category": "Finger Foods & Appetizers",
     "image_url": "https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": [],
+    "is_featured": true,
+    "tags": ["Popular"],
     "sort_order": 1
   },
   {
     "id": "2-king-prawns",
     "name": "King Prawns",
-    "description": "Breaded king prawns, choice of dip. Sizes: 5 pcs (5.90€), 10 pcs (10.90€), 15 pcs (12.90€)",
+    "description": "Breaded king prawns. Choice of dip.",
     "price": 5.9,
-    "category": "Finger Foods",
+    "variations": [
+      {
+        "id": "v-2a",
+        "label": "5 pcs",
+        "price": 5.9
+      },
+      {
+        "id": "v-2b",
+        "label": "10 pcs",
+        "price": 10.9
+      },
+      {
+        "id": "v-2c",
+        "label": "15 pcs",
+        "price": 12.9
+      }
+    ],
+    "category": "Finger Foods & Appetizers",
     "image_url": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
@@ -24,20 +59,54 @@
   {
     "id": "3-fried-chicken",
     "name": "Fried Chicken",
-    "description": "Choice of dip. Sizes: 5 pcs (5.90€), 10 pcs (10.90€), 15 pcs (12.90€)",
+    "description": "Choice of dip.",
     "price": 5.9,
-    "category": "Finger Foods",
+    "variations": [
+      {
+        "id": "v-3a",
+        "label": "5 pcs",
+        "price": 5.9
+      },
+      {
+        "id": "v-3b",
+        "label": "10 pcs",
+        "price": 10.9
+      },
+      {
+        "id": "v-3c",
+        "label": "15 pcs",
+        "price": 12.9
+      }
+    ],
+    "category": "Finger Foods & Appetizers",
     "image_url": "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Popular"],
+    "tags": [],
     "sort_order": 3
   },
   {
-    "id": "4-sumis-fried-wings",
+    "id": "4-sumi-s-fried-wings",
     "name": "Sumi's Fried Wings",
-    "description": "Choice of dip. Sizes: 5 pcs (5.90€), 10 pcs (10.90€), 15 pcs (12.90€)",
+    "description": "Choice of dip.",
     "price": 5.9,
-    "category": "Finger Foods",
+    "variations": [
+      {
+        "id": "v-4a",
+        "label": "5 pcs",
+        "price": 5.9
+      },
+      {
+        "id": "v-4b",
+        "label": "10 pcs",
+        "price": 10.9
+      },
+      {
+        "id": "v-4c",
+        "label": "15 pcs",
+        "price": 12.9
+      }
+    ],
+    "category": "Finger Foods & Appetizers",
     "image_url": "https://images.unsplash.com/photo-1524114664604-cd8133cd67ad?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
@@ -46,9 +115,26 @@
   {
     "id": "5-spring-rolls",
     "name": "Spring Rolls",
-    "description": "Vegetable and choice of dip. Sizes: 5 pcs (5.90€), 10 pcs (10.90€), 15 pcs (12.90€)",
+    "description": "Vegetable filling. Choice of dip.",
     "price": 5.9,
-    "category": "Finger Foods",
+    "variations": [
+      {
+        "id": "v-5a",
+        "label": "5 pcs",
+        "price": 5.9
+      },
+      {
+        "id": "v-5b",
+        "label": "10 pcs",
+        "price": 10.9
+      },
+      {
+        "id": "v-5c",
+        "label": "15 pcs",
+        "price": 12.9
+      }
+    ],
+    "category": "Finger Foods & Appetizers",
     "image_url": "https://images.unsplash.com/photo-1623253083987-26681ce4a992?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fHNwcmluZyUyMHJvbGxzfGVufDB8fDB8fHww",
     "is_available": true,
     "tags": [],
@@ -57,20 +143,39 @@
   {
     "id": "6-prawn-crackers",
     "name": "Prawn Crackers",
-    "description": "Sizes: 10 pcs (2.50€), 20 pcs (3.90€)",
+    "description": "",
     "price": 2.5,
-    "category": "Finger Foods",
-    "image_url": "https://media.istockphoto.com/id/472791100/photo/fresh-made-prawn-crackers.webp?a=1&b=1&s=612x612&w=0&k=20&c=pMj7BtbVsE-uLThM_qyOBuhgQLiKn30k2lM6R81dlLU=",
+    "variations": [
+      {
+        "id": "v-6a",
+        "label": "10 pcs",
+        "price": 2.5
+      },
+      {
+        "id": "v-6b",
+        "label": "20 pcs",
+        "price": 3.9
+      }
+    ],
+    "category": "Finger Foods & Appetizers",
+    "image_url": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 6
   },
   {
     "id": "7-starter-combo",
-    "name": "Starter Combo (6pcs)",
-    "description": "Spring rolls, fried chicken and onion ring.",
+    "name": "Starter Combo",
+    "description": "Spring rolls, fried chicken, onion ring (6 pcs)",
     "price": 6.9,
-    "category": "Finger Foods",
+    "variations": [
+      {
+        "id": "v-7a",
+        "label": "6 pcs",
+        "price": 6.9
+      }
+    ],
+    "category": "Finger Foods & Appetizers",
     "image_url": "https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
@@ -79,463 +184,1410 @@
   {
     "id": "8-party-combo",
     "name": "Party Combo",
-    "description": "4x spring rolls, 4x fried chicken, 4x gyoza, 4x fried shrimp, 4x chicken wings.",
+    "description": "4× spring rolls, 4× fried chicken, 4× gyoza, 4× fried shrimp, 4× chicken wings",
     "price": 19.9,
-    "category": "Finger Foods",
+    "variations": [
+      {
+        "id": "v-8a",
+        "label": "20 pcs",
+        "price": 19.9
+      }
+    ],
+    "category": "Finger Foods & Appetizers",
     "image_url": "https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Popular"],
+    "tags": [],
     "sort_order": 8
   },
   {
     "id": "9-avocado-salad",
     "name": "Avocado Salad",
-    "description": "Avocado, green salad, tomato, house dressing sauce. Add Salmon Sashimi (+4€) or Tofu (+2€)",
-    "price": 8.0,
-    "category": "Appetizers",
+    "description": "Avocado, green salad, tomato, house dressing",
+    "price": 8,
+    "variations": [
+      {
+        "id": "v-9a",
+        "label": "Regular",
+        "price": 8
+      }
+    ],
+    "category": "Finger Foods & Appetizers",
     "image_url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Healthy"],
+    "tags": [],
     "sort_order": 9
   },
   {
     "id": "10-miso-soup",
     "name": "Miso Soup",
-    "description": "Classic Japanese Miso Soup.",
-    "price": 3.0,
-    "category": "Appetizers",
+    "description": "",
+    "price": 3,
+    "variations": [
+      {
+        "id": "v-10a",
+        "label": "Regular",
+        "price": 3
+      }
+    ],
+    "category": "Finger Foods & Appetizers",
     "image_url": "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 10
   },
   {
-    "id": "11-kappa-maki",
+    "id": "11-kappa-maki-cucumber",
     "name": "Kappa Maki (Cucumber)",
-    "description": "Small rolls - 6 pcs.",
+    "description": "6 pcs",
     "price": 4.5,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-11a",
+        "label": "6 pcs",
+        "price": 4.5
+      }
+    ],
+    "category": "Hosomaki (Small Rolls)",
     "image_url": "https://images.unsplash.com/photo-1589187151053-5ec8818e661b?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 11
   },
   {
-    "id": "12-surimi-maki",
-    "name": "Surimi Maki (Crabstick)",
-    "description": "Small rolls - 6 pcs.",
+    "id": "12-surimi-maki-crab-stick",
+    "name": "Surimi Maki (Crab Stick)",
+    "description": "6 pcs",
     "price": 5.5,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-12a",
+        "label": "6 pcs",
+        "price": 5.5
+      }
+    ],
+    "category": "Hosomaki (Small Rolls)",
     "image_url": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 12
   },
   {
-    "id": "13-sake-maki",
+    "id": "13-sake-maki-salmon",
     "name": "Sake Maki (Salmon)",
-    "description": "Small rolls - 6 pcs.",
+    "description": "6 pcs",
     "price": 5.5,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-13a",
+        "label": "6 pcs",
+        "price": 5.5
+      }
+    ],
+    "category": "Hosomaki (Small Rolls)",
     "image_url": "https://images.unsplash.com/photo-1558985250-27a406d64cb3?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Popular"],
+    "is_featured": true,
+    "tags": [],
     "sort_order": 13
   },
   {
-    "id": "14-yaki-sake-maki",
+    "id": "14-yaki-sake-maki-grilled-salmon",
     "name": "Yaki Sake Maki (Grilled Salmon)",
-    "description": "Small rolls - 6 pcs.",
+    "description": "6 pcs",
     "price": 5.7,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-14a",
+        "label": "6 pcs",
+        "price": 5.7
+      }
+    ],
+    "category": "Hosomaki (Small Rolls)",
     "image_url": "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 14
   },
   {
-    "id": "15-oshinko-maki",
+    "id": "15-oshinko-maki-pickled-radish",
     "name": "Oshinko Maki (Pickled Radish)",
-    "description": "Small rolls - 6 pcs.",
+    "description": "6 pcs",
     "price": 4.5,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-15a",
+        "label": "6 pcs",
+        "price": 4.5
+      }
+    ],
+    "category": "Hosomaki (Small Rolls)",
     "image_url": "https://images.unsplash.com/photo-1562802378-063ec186a863?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Vegan"],
+    "tags": [],
     "sort_order": 15
   },
   {
-    "id": "16-tekka-maki",
+    "id": "16-tekka-maki-tuna",
     "name": "Tekka Maki (Tuna)",
-    "description": "Small rolls - 6 pcs.",
+    "description": "6 pcs",
     "price": 5.5,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-16a",
+        "label": "6 pcs",
+        "price": 5.5
+      }
+    ],
+    "category": "Hosomaki (Small Rolls)",
     "image_url": "https://images.unsplash.com/photo-1583623025817-d180a2221d0a?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 16
   },
   {
-    "id": "17-avocado-maki",
-    "name": "Avocado Maki",
-    "description": "Small rolls - 6 pcs.",
+    "id": "17-avokado-maki-avocado",
+    "name": "Avokado Maki (Avocado)",
+    "description": "6 pcs",
     "price": 4.5,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-17a",
+        "label": "6 pcs",
+        "price": 4.5
+      }
+    ],
+    "category": "Hosomaki (Small Rolls)",
     "image_url": "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Vegan"],
+    "tags": [],
     "sort_order": 17
   },
   {
-    "id": "20-rainbow-maki",
-    "name": "Rainbow Maki",
-    "description": "Cucumber, salmon, avocado, cream cheese, sesame seeds. Large roll - 8 pcs.",
+    "id": "20-rainbow",
+    "name": "Rainbow",
+    "description": "Surimi, cucumber, avocado, salmon, tuna. 8 pcs",
     "price": 11.9,
-    "category": "Sushi",
-    "image_url": "https://images.unsplash.com/photo-1611143669185-af224c5e3252?auto=format&fit=crop&w=800&q=80",
+    "variations": [
+      {
+        "id": "v-20a",
+        "label": "8 pcs",
+        "price": 11.9
+      }
+    ],
+    "category": "Makit (Large Rolls)",
+    "image_url": "https://images.unsplash.com/photo-1559700014-f14093bb4924?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Popular"],
+    "tags": [],
     "sort_order": 18
   },
   {
-    "id": "21-dragon-maki",
-    "name": "Dragon Maki",
-    "description": "Surimi, cucumber, avocado, salmon, tuna. Large roll - 8 pcs.",
+    "id": "21-dragon",
+    "name": "Dragon",
+    "description": "Cucumber, salmon, avocado, cream cheese, sesame seeds. 8 pcs",
     "price": 11.9,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-21a",
+        "label": "8 pcs",
+        "price": 11.9
+      }
+    ],
+    "category": "Makit (Large Rolls)",
     "image_url": "https://images.unsplash.com/photo-1617196034183-421b4917c92d?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Signature"],
+    "is_featured": true,
+    "tags": [],
     "sort_order": 19
   },
   {
-    "id": "22-king-prawn-maki",
-    "name": "King Prawn Maki",
-    "description": "Fried shrimp, avocado, masago. Large roll - 8 pcs.",
+    "id": "22-jattikatkarapu",
+    "name": "Jättikatkarapu",
+    "description": "Fried shrimp, avocado, masago. 8 pcs",
     "price": 11.9,
-    "category": "Sushi",
-    "image_url": "https://images.unsplash.com/photo-1558985250-27a406d64cb3?auto=format&fit=crop&w=800&q=80",
+    "variations": [
+      {
+        "id": "v-22a",
+        "label": "8 pcs",
+        "price": 11.9
+      }
+    ],
+    "category": "Makit (Large Rolls)",
+    "image_url": "https://images.unsplash.com/photo-1559700014-f14093bb4924?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 20
   },
   {
-    "id": "23-avocado-maki-large",
-    "name": "Avocado Large Maki",
-    "description": "Salmon, surimi, pickled radish, avocado. Large roll - 8 pcs.",
+    "id": "23-avokado-roll",
+    "name": "Avokado Roll",
+    "description": "Salmon, surimi, pickled radish, avocado. 8 pcs",
     "price": 11.9,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-23a",
+        "label": "8 pcs",
+        "price": 11.9
+      }
+    ],
+    "category": "Makit (Large Rolls)",
     "image_url": "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 21
   },
   {
-    "id": "24-salmon-gl-maki",
-    "name": "Salmon GL Maki",
-    "description": "Salmon, avocado, cucumber, grilled salmon, unagi sauce, spring onion. Large roll - 8 pcs.",
+    "id": "24-salmon-gl",
+    "name": "Salmon GL",
+    "description": "Salmon, avocado, cucumber, grilled salmon, unagi sauce, spring onion. 8 pcs",
     "price": 11.9,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-24a",
+        "label": "8 pcs",
+        "price": 11.9
+      }
+    ],
+    "category": "Makit (Large Rolls)",
     "image_url": "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Chef's Choice"],
+    "tags": [],
     "sort_order": 22
   },
   {
-    "id": "25-pulled-tuna-maki",
-    "name": "Pulled Tuna Maki",
-    "description": "Tuna, cucumber, roasted onion, mayonnaise, teriyaki sauce. Large roll - 8 pcs.",
+    "id": "25-pulled-tuna",
+    "name": "Pulled Tuna",
+    "description": "Tuna, cucumber, roasted onion, mayonnaise, teriyaki sauce. 8 pcs",
     "price": 9.9,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-25a",
+        "label": "8 pcs",
+        "price": 9.9
+      }
+    ],
+    "category": "Makit (Large Rolls)",
     "image_url": "https://images.unsplash.com/photo-1583623025817-d180a2221d0a?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 23
   },
   {
-    "id": "26-california-maki",
-    "name": "California Maki",
-    "description": "Surimi, avocado, cucumber, masago. Large roll - 8 pcs.",
+    "id": "26-california",
+    "name": "California",
+    "description": "Surimi, avocado, cucumber, masago. 8 pcs",
     "price": 9.9,
-    "category": "Sushi",
-    "image_url": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=800&q=80",
+    "variations": [
+      {
+        "id": "v-26a",
+        "label": "8 pcs",
+        "price": 9.9
+      }
+    ],
+    "category": "Makit (Large Rolls)",
+    "image_url": "https://images.unsplash.com/photo-1590467000194-e3547f3f2081?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Popular"],
+    "tags": [],
     "sort_order": 24
   },
   {
-    "id": "27-philadelphia-maki",
-    "name": "Philadelphia Maki",
-    "description": "Cream cheese, salmon, cucumber, sesame seeds. Large roll - 8 pcs.",
+    "id": "27-philadelphia",
+    "name": "Philadelphia",
+    "description": "Cream cheese, salmon, cucumber, sesame seeds. 8 pcs",
     "price": 9.9,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-27a",
+        "label": "8 pcs",
+        "price": 9.9
+      }
+    ],
+    "category": "Makit (Large Rolls)",
     "image_url": "https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 25
   },
   {
-    "id": "28-veggie-maki",
-    "name": "Veggie Maki",
-    "description": "Tofu, salad, cucumber, avocado, veg mayo. Large roll - 8 pcs.",
+    "id": "28-veggie",
+    "name": "Veggie",
+    "description": "Tofu, salad, cucumber, avocado, veg mayo. 8 pcs",
     "price": 9.9,
-    "category": "Sushi",
+    "variations": [
+      {
+        "id": "v-28a",
+        "label": "8 pcs",
+        "price": 9.9
+      }
+    ],
+    "category": "Makit (Large Rolls)",
     "image_url": "https://images.unsplash.com/photo-1562802378-063ec186a863?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Vegan"],
+    "tags": [],
     "sort_order": 26
   },
   {
-    "id": "30-mori-assortment",
-    "name": "Mori (6 pcs)",
-    "description": "Assortment of sushi sets including grilled salmon nigiri and california rolls.",
-    "price": 8.0,
+    "id": "30-mori",
+    "name": "Mori",
+    "description": "2× grilled salmon nigiri, 4× California roll",
+    "price": 8,
+    "variations": [
+      {
+        "id": "v-30a",
+        "label": "6 pcs",
+        "price": 8
+      }
+    ],
     "category": "Sushi Assortments",
     "image_url": "https://images.unsplash.com/photo-1558985250-27a406d64cb3?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 27
+  },
+  {
+    "id": "31-shake",
+    "name": "Shake",
+    "description": "6× salmon nigiri, 6× grilled salmon nigiri",
+    "price": 15.9,
+    "variations": [
+      {
+        "id": "v-31a",
+        "label": "12 pcs",
+        "price": 15.9
+      }
+    ],
+    "category": "Sushi Assortments",
+    "image_url": "https://images.unsplash.com/photo-1617196034183-421b4917c92d?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 28
+  },
+  {
+    "id": "32-aki",
+    "name": "Aki",
+    "description": "2× salmon, 2× shrimp, 2× grilled salmon, 2× tuna, 2× chili salmon, 2× avocado nigiri",
+    "price": 15.9,
+    "variations": [
+      {
+        "id": "v-32a",
+        "label": "12 pcs",
+        "price": 15.9
+      }
+    ],
+    "category": "Sushi Assortments",
+    "image_url": "https://images.unsplash.com/photo-1582450871972-ed5ca60b9f2d?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 29
+  },
+  {
+    "id": "33-fuyu",
+    "name": "Fuyu",
+    "description": "2× grilled salmon nigiri, 2× spicy salmon, 4× fried shrimp, 4× fried shrimp maki",
+    "price": 15.9,
+    "variations": [
+      {
+        "id": "v-33a",
+        "label": "12 pcs",
+        "price": 15.9
+      }
+    ],
+    "category": "Sushi Assortments",
+    "image_url": "https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 30
   },
   {
-    "id": "31-shake-assortment",
-    "name": "Shake (12 pcs)",
-    "description": "6x salmon nigiri, 6x grilled salmon nigiri.",
-    "price": 15.9,
+    "id": "34-yasu",
+    "name": "Yasu",
+    "description": "2× tofu, 2× avocado nigiri, 4× veggie maki, 6× cucumber hosomaki",
+    "price": 12.9,
+    "variations": [
+      {
+        "id": "v-34a",
+        "label": "14 pcs",
+        "price": 12.9
+      }
+    ],
     "category": "Sushi Assortments",
-    "image_url": "https://images.unsplash.com/photo-1617196034183-421b4917c92d?auto=format&fit=crop&w=800&q=80",
+    "image_url": "https://images.unsplash.com/photo-1562802378-063ec186a863?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Popular"],
+    "tags": [],
     "sort_order": 31
   },
   {
-    "id": "poke-1",
-    "name": "Raw Salmon Pesto Poke",
-    "description": "Sushi rice, salmon pesto, carrot, avocado, soya bean, mango, spring onion, house spicy mayo, eel sauce, sesame seeds. Sizes: Non-spicy (11.90€), Spicy (13.90€)",
-    "price": 11.9,
-    "category": "Poke Bowls",
-    "image_url": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+    "id": "35-kawa",
+    "name": "Kawa",
+    "description": "4× California, 4× fried shrimp maki, 6× cucumber hosomaki",
+    "price": 12.9,
+    "variations": [
+      {
+        "id": "v-35a",
+        "label": "14 pcs",
+        "price": 12.9
+      }
+    ],
+    "category": "Sushi Assortments",
+    "image_url": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Signature"],
+    "tags": [],
+    "sort_order": 32
+  },
+  {
+    "id": "36-shiro",
+    "name": "Shiro",
+    "description": "4× fried shrimp maki, 4× avocado maki, 4× California maki, 4× tuna pest maki, 6× salmon hosomaki",
+    "price": 29.9,
+    "variations": [
+      {
+        "id": "v-36a",
+        "label": "22 pcs",
+        "price": 29.9
+      }
+    ],
+    "category": "Sushi Assortments",
+    "image_url": "https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 33
+  },
+  {
+    "id": "37-sakana",
+    "name": "Sakana",
+    "description": "Assortment of 1–4 pcs of various nigiris and gunkans",
+    "price": 17.9,
+    "variations": [
+      {
+        "id": "v-37a",
+        "label": "11 pcs",
+        "price": 17.9
+      },
+      {
+        "id": "v-37b",
+        "label": "22 pcs",
+        "price": 29.9
+      },
+      {
+        "id": "v-37c",
+        "label": "33 pcs",
+        "price": 42.9
+      },
+      {
+        "id": "v-37d",
+        "label": "44 pcs",
+        "price": 52.9
+      }
+    ],
+    "category": "Sushi Assortments",
+    "image_url": "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 34
+  },
+  {
+    "id": "38-kuro",
+    "name": "Kuro",
+    "description": "California, salmon, tuna, wakame, cucumber house maki + nigiris — 28 pcs",
+    "price": 34.9,
+    "variations": [
+      {
+        "id": "v-38a",
+        "label": "28 pcs",
+        "price": 34.9
+      }
+    ],
+    "category": "Sushi Assortments",
+    "image_url": "https://images.unsplash.com/photo-1617196034183-421b4917c92d?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 35
+  },
+  {
+    "id": "39-shirokuma",
+    "name": "Shirokuma",
+    "description": "The grand platter — salmon, tuna, shrimp, avocado, crab stick, Philadelphia, California, fried shrimp, wakame, veg nigiris and makis — 52 pcs",
+    "price": 69.9,
+    "variations": [
+      {
+        "id": "v-39a",
+        "label": "52 pcs",
+        "price": 69.9
+      }
+    ],
+    "category": "Sushi Assortments",
+    "image_url": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 36
+  },
+  {
+    "id": "40-lohi-salmon",
+    "name": "Lohi (Salmon)",
+    "description": "",
+    "price": 3.2,
+    "variations": [
+      {
+        "id": "v-40a",
+        "label": "2 pcs",
+        "price": 3.2
+      },
+      {
+        "id": "v-40b",
+        "label": "4 pcs",
+        "price": 6
+      }
+    ],
+    "category": "Nigiri & Gunkan",
+    "image_url": "https://images.unsplash.com/photo-1558985250-27a406d64cb3?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 37
+  },
+  {
+    "id": "41-grillattu-lohi-grilled-salmon",
+    "name": "Grillattu Lohi (Grilled Salmon)",
+    "description": "",
+    "price": 3.5,
+    "variations": [
+      {
+        "id": "v-41a",
+        "label": "2 pcs",
+        "price": 3.5
+      },
+      {
+        "id": "v-41b",
+        "label": "4 pcs",
+        "price": 6.5
+      }
+    ],
+    "category": "Nigiri & Gunkan",
+    "image_url": "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 38
+  },
+  {
+    "id": "42-katkarapu-shrimp",
+    "name": "Katkarapu (Shrimp)",
+    "description": "",
+    "price": 3.2,
+    "variations": [
+      {
+        "id": "v-42a",
+        "label": "2 pcs",
+        "price": 3.2
+      },
+      {
+        "id": "v-42b",
+        "label": "4 pcs",
+        "price": 6
+      }
+    ],
+    "category": "Nigiri & Gunkan",
+    "image_url": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 39
+  },
+  {
+    "id": "43-tofu",
+    "name": "Tofu",
+    "description": "",
+    "price": 3,
+    "variations": [
+      {
+        "id": "v-43a",
+        "label": "2 pcs",
+        "price": 3
+      },
+      {
+        "id": "v-43b",
+        "label": "4 pcs",
+        "price": 5
+      }
+    ],
+    "category": "Nigiri & Gunkan",
+    "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
     "sort_order": 40
   },
   {
-    "id": "poke-2",
-    "name": "Raw Salmon Chunks Poke",
-    "description": "Sushi rice, salmon, sweet corn, pickled red onion, avocado, cucumber, wasabi mayo, nuts. Sizes: Non-spicy (11.90€), Spicy (13.90€)",
-    "price": 11.9,
-    "category": "Poke Bowls",
-    "image_url": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=800&q=80",
+    "id": "44-avokado",
+    "name": "Avokado",
+    "description": "",
+    "price": 3.2,
+    "variations": [
+      {
+        "id": "v-44a",
+        "label": "2 pcs",
+        "price": 3.2
+      },
+      {
+        "id": "v-44b",
+        "label": "4 pcs",
+        "price": 6
+      }
+    ],
+    "category": "Nigiri & Gunkan",
+    "image_url": "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Popular"],
+    "tags": [],
     "sort_order": 41
   },
   {
-    "id": "poke-3",
-    "name": "Grilled Salmon Chunks Poke",
-    "description": "Sushi rice, grilled salmon, cherry tomato, mango, salad, carrot, fried onion, house mayo, teriyaki sauce, sesame seeds. Sizes: Non-spicy (11.90€), Spicy (13.90€)",
-    "price": 11.9,
-    "category": "Poke Bowls",
-    "image_url": "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=800&q=80",
+    "id": "45-merileva-gunkan-seaweed",
+    "name": "Merilevä-Gunkan (Seaweed)",
+    "description": "",
+    "price": 3,
+    "variations": [
+      {
+        "id": "v-45a",
+        "label": "2 pcs",
+        "price": 3
+      },
+      {
+        "id": "v-45b",
+        "label": "4 pcs",
+        "price": 5
+      }
+    ],
+    "category": "Nigiri & Gunkan",
+    "image_url": "https://images.unsplash.com/photo-1562802378-063ec186a863?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 42
   },
   {
-    "id": "poke-4",
-    "name": "In-house Chicken Poke",
-    "description": "Sushi rice, boiled chicken, mango or pineapple, cucumber, red cabbage, cherry tomato, radish, spring onion, house mayo, teriyaki sauce. Sizes: Non-spicy (11.90€), Spicy (13.90€)",
-    "price": 11.9,
-    "category": "Poke Bowls",
-    "image_url": "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?auto=format&fit=crop&w=800&q=80",
+    "id": "46-tonnikala-gunkan-tuna",
+    "name": "Tonnikala-Gunkan (Tuna)",
+    "description": "",
+    "price": 3.2,
+    "variations": [
+      {
+        "id": "v-46a",
+        "label": "2 pcs",
+        "price": 3.2
+      },
+      {
+        "id": "v-46b",
+        "label": "4 pcs",
+        "price": 6
+      }
+    ],
+    "category": "Nigiri & Gunkan",
+    "image_url": "https://images.unsplash.com/photo-1583623025817-d180a2221d0a?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 43
   },
   {
-    "id": "poke-5",
-    "name": "Prawns Special Poke",
-    "description": "Sushi rice, boiled prawns, salad, bell pepper, soya bean, cashew nuts, wakame, tobiko, teriyaki sauce, spicy mayo. Sizes: Non-spicy (11.90€), Spicy (13.90€)",
-    "price": 11.9,
-    "category": "Poke Bowls",
-    "image_url": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80",
+    "id": "47-spicy-salmon-gunkan",
+    "name": "Spicy Salmon-Gunkan",
+    "description": "",
+    "price": 3.2,
+    "variations": [
+      {
+        "id": "v-47a",
+        "label": "2 pcs",
+        "price": 3.2
+      },
+      {
+        "id": "v-47b",
+        "label": "4 pcs",
+        "price": 6
+      }
+    ],
+    "category": "Nigiri & Gunkan",
+    "image_url": "https://images.unsplash.com/photo-1558985250-27a406d64cb3?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 44
   },
   {
-    "id": "poke-6",
-    "name": "Special Tofu Poke",
-    "description": "Sushi rice, tofu, cherry tomato, radish, carrot, mango, sweet corn, red cabbage, spring onion, vegan mayo, teriyaki sauce. Sizes: Non-spicy (11.90€), Spicy (13.90€)",
+    "id": "p1-raw-salmon-pesto-poke",
+    "name": "Raw Salmon Pesto Poke",
+    "description": "Sushi rice, salmon pesto, carrot, avocado, soya bean, mango, spring onion, house spicy mayo, eel sauce, sesame seeds",
     "price": 11.9,
+    "variations": [
+      {
+        "id": "vp1a",
+        "label": "Normal Bowl",
+        "price": 11.9
+      },
+      {
+        "id": "vp1b",
+        "label": "Large Bowl",
+        "price": 13.9
+      }
+    ],
     "category": "Poke Bowls",
-    "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+    "image_url": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Vegan"],
+    "is_featured": true,
+    "tags": ["Signature"],
     "sort_order": 45
   },
   {
-    "id": "poke-7",
-    "name": "Sumi Special Poke",
-    "description": "Sushi rice, prawns, marinated salmon, boiled egg, soya bean, avocado, carrot, bell pepper, wakame, spring onion, teriyaki sauce, spicy mayo, nuts, sesame seeds. Sizes: Non-spicy (13.90€), Spicy (15.90€)",
-    "price": 13.9,
+    "id": "p2-raw-salmon-chunks-poke",
+    "name": "Raw Salmon Chunks Poke",
+    "description": "Sushi rice, salmon, sweet corn, pickled red onion, avocado, cucumber, wasabi mayo, nuts",
+    "price": 11.9,
+    "variations": [
+      {
+        "id": "vp2a",
+        "label": "Normal Bowl",
+        "price": 11.9
+      },
+      {
+        "id": "vp2b",
+        "label": "Large Bowl",
+        "price": 13.9
+      }
+    ],
     "category": "Poke Bowls",
-    "image_url": "/frames/frame-0001.webp",
+    "image_url": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Signature"],
+    "tags": [],
     "sort_order": 46
   },
   {
-    "id": "wok-48",
-    "name": "Chicken Devil",
-    "description": "Marinated chicken, onion, tomato, bell pepper, garlic, spring onion, coriander, leeks. Sizes: Normal (13.90€), Large (16.90€)",
-    "price": 13.9,
-    "category": "Woks",
-    "image_url": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
+    "id": "p3-grilled-salmon-chunks-poke",
+    "name": "Grilled Salmon Chunks Poke",
+    "description": "Sushi rice, grilled salmon, cherry tomato, mango, salad, carrot, fried onion, house mayo, teriyaki sauce, sesame seeds",
+    "price": 11.9,
+    "variations": [
+      {
+        "id": "vp3a",
+        "label": "Normal Bowl",
+        "price": 11.9
+      },
+      {
+        "id": "vp3b",
+        "label": "Large Bowl",
+        "price": 13.9
+      }
+    ],
+    "category": "Poke Bowls",
+    "image_url": "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Spicy"],
+    "tags": [],
+    "sort_order": 47
+  },
+  {
+    "id": "p4-in-house-chicken-poke",
+    "name": "In-House Chicken Poke",
+    "description": "Sushi rice, boiled chicken, mango or pineapple, cucumber, red cabbage, cherry tomato, radish, spring onion, house mayo, teriyaki sauce",
+    "price": 11.9,
+    "variations": [
+      {
+        "id": "vp4a",
+        "label": "Normal Bowl",
+        "price": 11.9
+      },
+      {
+        "id": "vp4b",
+        "label": "Large Bowl",
+        "price": 13.9
+      }
+    ],
+    "category": "Poke Bowls",
+    "image_url": "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 48
+  },
+  {
+    "id": "p5-prawns-special-poke",
+    "name": "Prawns Special Poke",
+    "description": "Sushi rice, boiled prawns, salad, bell pepper, soya bean, cashew nuts, wakame, tobiko, teriyaki sauce, spicy mayo",
+    "price": 11.9,
+    "variations": [
+      {
+        "id": "vp5a",
+        "label": "Normal Bowl",
+        "price": 11.9
+      },
+      {
+        "id": "vp5b",
+        "label": "Large Bowl",
+        "price": 13.9
+      }
+    ],
+    "category": "Poke Bowls",
+    "image_url": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 49
+  },
+  {
+    "id": "p6-special-tofu-poke",
+    "name": "Special Tofu Poke",
+    "description": "Sushi rice, tofu, cherry tomato, radish, carrot, mango, sweet corn, red cabbage, spring onion, vegan mayo, teriyaki sauce",
+    "price": 11.9,
+    "variations": [
+      {
+        "id": "vp6a",
+        "label": "Normal Bowl",
+        "price": 11.9
+      },
+      {
+        "id": "vp6b",
+        "label": "Large Bowl",
+        "price": 13.9
+      }
+    ],
+    "category": "Poke Bowls",
+    "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
     "sort_order": 50
   },
   {
-    "id": "wok-49",
-    "name": "Prawns Devil",
-    "description": "Marinated prawns, onion, tomato, bell pepper, garlic, spring onion, coriander, leeks. Sizes: Normal (14.90€), Large (17.90€)",
-    "price": 14.9,
-    "category": "Woks",
-    "image_url": "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=800&q=80",
+    "id": "p7-sumi-special-poke",
+    "name": "Sumi Special Poke",
+    "description": "Sushi rice, prawns, marinated salmon, boiled egg, soya bean, avocado, carrot, bell pepper, wakame, spring onion, teriyaki sauce, spicy mayo, nuts, sesame seeds",
+    "price": 13.9,
+    "variations": [
+      {
+        "id": "vp7a",
+        "label": "Normal Bowl",
+        "price": 13.9
+      },
+      {
+        "id": "vp7b",
+        "label": "Large Bowl",
+        "price": 15.9
+      }
+    ],
+    "category": "Poke Bowls",
+    "image_url": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
-    "tags": ["Spicy"],
+    "is_featured": true,
+    "tags": ["Signature"],
     "sort_order": 51
   },
   {
-    "id": "wok-50",
-    "name": "Chicken Curry Wok",
-    "description": "Marinated prawns (text says prawns but title is chicken?), onion, tomato, bell pepper, garlic, spring onion, coriander, leeks. Sizes: Normal (13.90€), Large (16.90€)",
+    "id": "48-chicken-devil",
+    "name": "Chicken Devil",
+    "description": "Marinated chicken, onion, tomato, bell pepper, garlic, spring onion, coriander, leeks",
     "price": 13.9,
+    "variations": [
+      {
+        "id": "vw1a",
+        "label": "Normal",
+        "price": 13.9
+      },
+      {
+        "id": "vw1b",
+        "label": "Large",
+        "price": 16.9
+      }
+    ],
+    "category": "Woks",
+    "image_url": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "is_featured": true,
+    "tags": ["Spicy"],
+    "sort_order": 52
+  },
+  {
+    "id": "49-prawns-devil",
+    "name": "Prawns Devil",
+    "description": "Marinated prawns, onion, tomato, bell pepper, garlic, spring onion, coriander, leeks",
+    "price": 14.9,
+    "variations": [
+      {
+        "id": "vw2a",
+        "label": "Normal",
+        "price": 14.9
+      },
+      {
+        "id": "vw2b",
+        "label": "Large",
+        "price": 17.9
+      }
+    ],
+    "category": "Woks",
+    "image_url": "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 53
+  },
+  {
+    "id": "50-chicken-curry",
+    "name": "Chicken Curry",
+    "description": "Chicken, onion, tomato, bell pepper, garlic, spring onion, coriander, leeks",
+    "price": 13.9,
+    "variations": [
+      {
+        "id": "vw3a",
+        "label": "Normal",
+        "price": 13.9
+      },
+      {
+        "id": "vw3b",
+        "label": "Large",
+        "price": 16.9
+      }
+    ],
     "category": "Woks",
     "image_url": "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
-    "sort_order": 52
-  },
-  {
-    "id": "wok-51",
-    "name": "Veg Curry Wok",
-    "description": "Mushroom, potato, carrot, bell pepper, broccoli, tomato, leeks, spring onion, cashew nuts, sesame seeds, coconut milk, tofu. Sizes: Normal (10.90€), Large (13.90€)",
-    "price": 10.9,
-    "category": "Woks",
-    "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
-    "is_available": true,
-    "tags": ["Vegan"],
-    "sort_order": 53
-  },
-  {
-    "id": "wok-56",
-    "name": "Kung Po Chicken",
-    "description": "Broiler chicken, cucumber, peanut, dried chili.",
-    "price": 14.9,
-    "category": "Woks",
-    "image_url": "https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=800&q=80",
-    "is_available": true,
-    "tags": ["Spicy", "Popular"],
     "sort_order": 54
   },
   {
-    "id": "rice-57",
-    "name": "Fried Rice Chicken",
-    "description": "Egg, onion, carrot, leek, iceberg lettuce.",
-    "price": 11.9,
-    "category": "Rice & Noodles",
+    "id": "51-veg-curry",
+    "name": "Veg Curry",
+    "description": "Mushroom, potato, carrot, bell pepper, broccoli, tomato, leeks, spring onion, cashew nuts, sesame seeds, coconut milk, tofu",
+    "price": 10.9,
+    "variations": [
+      {
+        "id": "vw4a",
+        "label": "Normal",
+        "price": 10.9
+      },
+      {
+        "id": "vw4b",
+        "label": "Large",
+        "price": 13.9
+      }
+    ],
+    "category": "Woks",
+    "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 55
+  },
+  {
+    "id": "52-chicken-wok",
+    "name": "Chicken Wok",
+    "description": "",
+    "price": 12,
+    "variations": [
+      {
+        "id": "vw5a",
+        "label": "Regular",
+        "price": 12
+      }
+    ],
+    "category": "Woks",
     "image_url": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 56
+  },
+  {
+    "id": "53-king-prawns-wok",
+    "name": "King Prawns Wok",
+    "description": "",
+    "price": 17,
+    "variations": [
+      {
+        "id": "vw6a",
+        "label": "Regular",
+        "price": 17
+      }
+    ],
+    "category": "Woks",
+    "image_url": "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 57
+  },
+  {
+    "id": "54-vegetables-wok",
+    "name": "Vegetables Wok",
+    "description": "",
+    "price": 13,
+    "variations": [
+      {
+        "id": "vw7a",
+        "label": "Regular",
+        "price": 13
+      }
+    ],
+    "category": "Woks",
+    "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 58
+  },
+  {
+    "id": "55-tofu-wok",
+    "name": "Tofu Wok",
+    "description": "",
+    "price": 13,
+    "variations": [
+      {
+        "id": "vw8a",
+        "label": "Regular",
+        "price": 13
+      }
+    ],
+    "category": "Woks",
+    "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 59
+  },
+  {
+    "id": "56-kung-po-chicken",
+    "name": "Kung Po Chicken",
+    "description": "Broiler chicken, cucumber, peanut, dried chili",
+    "price": 14.9,
+    "variations": [
+      {
+        "id": "vw9a",
+        "label": "Regular",
+        "price": 14.9
+      }
+    ],
+    "category": "Woks",
+    "image_url": "https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 60
   },
   {
-    "id": "noodles-58",
-    "name": "Fried Noodles Chicken",
-    "description": "Egg, onion, beans, bonito flakes.",
+    "id": "57-fried-rice",
+    "name": "Fried Rice",
+    "description": "Chicken, egg, peas, carrot, corn, spring onion",
     "price": 11.9,
+    "variations": [
+      {
+        "id": "vr1a",
+        "label": "Chicken",
+        "price": 11.9
+      }
+    ],
     "category": "Rice & Noodles",
-    "image_url": "https://images.unsplash.com/photo-1654340271735-85cf5338540d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "image_url": "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 61
   },
   {
-    "id": "udon-59",
-    "name": "Fried Udon Noodles Chicken",
-    "description": "With chicken and vegetables.",
-    "price": 12.9,
+    "id": "58-fried-noodles",
+    "name": "Fried Noodles",
+    "description": "Egg, onion, carrot, leek, iceberg lettuce",
+    "price": 11.9,
+    "variations": [
+      {
+        "id": "vr2a",
+        "label": "Chicken",
+        "price": 11.9
+      }
+    ],
     "category": "Rice & Noodles",
-    "image_url": "https://media.istockphoto.com/id/1460956149/photo/asian-fried-noodles-with-chicken-and-vegetables-isolated-on-white-background-chinese-fried.webp?a=1&b=1&s=612x612&w=0&k=20&c=TtiDOsolqwjrgi6xZEkJs5KH7nlDfmqnfLz2nKdn0ac=",
+    "image_url": "https://images.unsplash.com/photo-1654340271735-85cf5338540d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     "is_available": true,
     "tags": [],
     "sort_order": 62
   },
   {
-    "id": "kids-61",
+    "id": "59-fried-udon-noodles",
+    "name": "Fried Udon Noodles",
+    "description": "Egg, onion, beans, bonito flakes",
+    "price": 12.9,
+    "variations": [
+      {
+        "id": "vr3a",
+        "label": "Chicken",
+        "price": 12.9
+      }
+    ],
+    "category": "Rice & Noodles",
+    "image_url": "https://media.istockphoto.com/id/1460956149/photo/asian-fried-noodles-with-chicken-and-vegetables-isolated-on-white-background-chinese-fried.webp?a=1&b=1&s=612x612&w=0&k=20&c=TtiDOsolqwjrgi6xZEkJs5KH7nlDfmqnfLz2nKdn0ac=",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 63
+  },
+  {
+    "id": "60-fried-rice-noodles",
+    "name": "Fried Rice Noodles",
+    "description": "Egg, carrot, spring onion, ginger, chili sauce",
+    "price": 11.9,
+    "variations": [
+      {
+        "id": "vr4a",
+        "label": "Chicken",
+        "price": 11.9
+      }
+    ],
+    "category": "Rice & Noodles",
+    "image_url": "https://images.unsplash.com/photo-1654340271735-85cf5338540d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 64
+  },
+  {
+    "id": "61-salmon-teriyaki-with-rice",
     "name": "Salmon Teriyaki with Rice",
-    "description": "Salmon, broccoli, carrot for kids.",
-    "price": 9.0,
+    "description": "Salmon, broccoli, carrot",
+    "price": 9,
+    "variations": [
+      {
+        "id": "vk1a",
+        "label": "Regular",
+        "price": 9
+      }
+    ],
     "category": "Kids Meals",
-    "image_url": "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80",
+    "image_url": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 65
+  },
+  {
+    "id": "62-fried-chicken",
+    "name": "Fried Chicken",
+    "description": "6 pcs chicken with sweet & sour sauce, or with rice, or with fries",
+    "price": 9,
+    "variations": [
+      {
+        "id": "vk2a",
+        "label": "6 pcs",
+        "price": 9
+      }
+    ],
+    "category": "Kids Meals",
+    "image_url": "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 66
+  },
+  {
+    "id": "63-french-fries",
+    "name": "French Fries",
+    "description": "",
+    "price": 3,
+    "variations": [
+      {
+        "id": "vk3a",
+        "label": "Regular",
+        "price": 3
+      }
+    ],
+    "category": "Kids Meals",
+    "image_url": "https://images.unsplash.com/photo-1573082882202-f71f3044f54d?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 67
+  },
+  {
+    "id": "d1-coca-cola",
+    "name": "Coca Cola",
+    "description": "",
+    "price": 2.5,
+    "variations": [
+      {
+        "id": "vd1a",
+        "label": "0.33 cl",
+        "price": 2.5
+      },
+      {
+        "id": "vd1b",
+        "label": "0.50 cl",
+        "price": 3.5
+      },
+      {
+        "id": "vd1c",
+        "label": "1.5 L",
+        "price": 5
+      }
+    ],
+    "category": "Drinks",
+    "image_url": "https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 68
+  },
+  {
+    "id": "d2-coca-cola-zero",
+    "name": "Coca Cola Zero",
+    "description": "",
+    "price": 2.5,
+    "variations": [
+      {
+        "id": "vd2a",
+        "label": "0.33 cl",
+        "price": 2.5
+      },
+      {
+        "id": "vd2b",
+        "label": "0.50 cl",
+        "price": 3.5
+      },
+      {
+        "id": "vd2c",
+        "label": "1.5 L",
+        "price": 5
+      }
+    ],
+    "category": "Drinks",
+    "image_url": "https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=800&q=80",
+    "is_available": true,
+    "tags": [],
+    "sort_order": 69
+  },
+  {
+    "id": "d3-sprite-zero",
+    "name": "Sprite Zero",
+    "description": "",
+    "price": 2.5,
+    "variations": [
+      {
+        "id": "vd3a",
+        "label": "0.33 cl",
+        "price": 2.5
+      },
+      {
+        "id": "vd3b",
+        "label": "0.50 cl",
+        "price": 3.5
+      },
+      {
+        "id": "vd3c",
+        "label": "1.5 L",
+        "price": 5
+      }
+    ],
+    "category": "Drinks",
+    "image_url": "https://images.unsplash.com/photo-1680404005217-a441afdefe83?q=80&w=764&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     "is_available": true,
     "tags": [],
     "sort_order": 70
   },
   {
-    "id": "kids-62",
-    "name": "Fried Chicken (6pcs)",
-    "description": "Chicken with sweet & sour sauce, choice of rice or fries.",
-    "price": 9.0,
-    "category": "Kids Meals",
-    "image_url": "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=800&q=80",
+    "id": "d4-pepsi",
+    "name": "Pepsi",
+    "description": "",
+    "price": 2.5,
+    "variations": [
+      {
+        "id": "vd4a",
+        "label": "0.33 cl",
+        "price": 2.5
+      },
+      {
+        "id": "vd4b",
+        "label": "0.50 cl",
+        "price": 3.5
+      },
+      {
+        "id": "vd4c",
+        "label": "1.5 L",
+        "price": 5
+      }
+    ],
+    "category": "Drinks",
+    "image_url": "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 71
   },
   {
-    "id": "kids-63",
-    "name": "French Fries",
-    "description": "A serving of crispy french fries.",
-    "price": 3.0,
-    "category": "Kids Meals",
-    "image_url": "https://media.istockphoto.com/id/1218213212/photo/homemade-french-fries-with-ketchup-and-mayonnaise-on-rustic-wooden-table.webp?a=1&b=1&s=612x612&w=0&k=20&c=QYwXP0-whoz7Cni7CXNfIyT_pOcRpZUYHqkTYH4MEhA=",
+    "id": "d5-jaffa",
+    "name": "Jaffa",
+    "description": "",
+    "price": 2.5,
+    "variations": [
+      {
+        "id": "vd5a",
+        "label": "0.33 cl",
+        "price": 2.5
+      },
+      {
+        "id": "vd5b",
+        "label": "0.50 cl",
+        "price": 3.5
+      },
+      {
+        "id": "vd5c",
+        "label": "1.5 L",
+        "price": 5
+      }
+    ],
+    "category": "Drinks",
+    "image_url": "https://images.unsplash.com/photo-1556881286-fc6915169721?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
     "sort_order": 72
   },
   {
-    "id": "drink-1",
-    "name": "Coca Cola 0.33L",
-    "description": "Classic Coca Cola Can.",
+    "id": "d6-fanta",
+    "name": "Fanta",
+    "description": "",
     "price": 2.5,
+    "variations": [
+      {
+        "id": "vd6a",
+        "label": "0.33 cl",
+        "price": 2.5
+      },
+      {
+        "id": "vd6b",
+        "label": "0.50 cl",
+        "price": 3.5
+      },
+      {
+        "id": "vd6c",
+        "label": "1.5 L",
+        "price": 5
+      }
+    ],
     "category": "Drinks",
-    "image_url": "https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=800&q=80",
+    "image_url": "https://images.unsplash.com/photo-1624517452488-04869289c4ca?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
-    "sort_order": 80
+    "sort_order": 73
   },
   {
-    "id": "drink-2",
-    "name": "Sprite Zero 0.33L",
-    "description": "Sprite Zero Can.",
+    "id": "d7-sparkling-water",
+    "name": "Sparkling Water",
+    "description": "",
     "price": 2.5,
+    "variations": [
+      {
+        "id": "vd7a",
+        "label": "0.33 cl",
+        "price": 2.5
+      }
+    ],
     "category": "Drinks",
-    "image_url": "https://images.unsplash.com/photo-1680404005217-a441afdefe83?q=80&w=764&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "image_url": "https://images.unsplash.com/photo-1560023907-5f339617ea30?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
-    "sort_order": 81
+    "sort_order": 74
   },
   {
-    "id": "drink-3",
-    "name": "Green Tea",
-    "description": "Hot Green Tea.",
-    "price": 3.0,
+    "id": "d8-pepsi-max",
+    "name": "Pepsi Max",
+    "description": "",
+    "price": 2.5,
+    "variations": [
+      {
+        "id": "vd8a",
+        "label": "0.33 cl",
+        "price": 2.5
+      },
+      {
+        "id": "vd8b",
+        "label": "0.50 cl",
+        "price": 3.5
+      },
+      {
+        "id": "vd8c",
+        "label": "1.5 L",
+        "price": 5
+      }
+    ],
     "category": "Drinks",
-    "image_url": "https://images.unsplash.com/photo-1556881286-fc6915169721?auto=format&fit=crop&w=800&q=80",
+    "image_url": "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?auto=format&fit=crop&w=800&q=80",
     "is_available": true,
     "tags": [],
-    "sort_order": 82
+    "sort_order": 75
   }
 ]
