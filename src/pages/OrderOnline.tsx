@@ -36,101 +36,31 @@ const RamenBowlIcon = ({
   </svg>
 );
 
-// Fallback menu if Firestore is not configured or fails
-const FALLBACK_MENU: MenuItem[] = [
-  {
-    id: "13-sake-maki",
-    category: "Sushi",
-    name: "Sake Maki (Salmon)",
-    description: "Small rolls - 6 pcs.",
-    price: 5.5,
-    image_url:
-      "https://images.unsplash.com/photo-1558985250-27a406d64cb3?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-    tags: ["Popular"],
-  },
-  {
-    id: "24-salmon-gl-maki",
-    category: "Sushi",
-    name: "Salmon GL Maki",
-    description:
-      "Salmon, avocado, cucumber, grilled salmon, unagi sauce, spring onion. Large roll - 8 pcs.",
-    price: 11.9,
-    image_url:
-      "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-    tags: ["Chef's Choice"],
-  },
-  {
-    id: "26-california-maki",
-    category: "Sushi",
-    name: "California Maki",
-    description: "Surimi, avocado, cucumber, masago. Large roll - 8 pcs.",
-    price: 9.9,
-    image_url:
-      "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-    tags: [],
-  },
-  {
-    id: "21-dragon-maki",
-    category: "Sushi",
-    name: "Dragon Maki",
-    description: "Surimi, cucumber, avocado, salmon, tuna. Large roll - 8 pcs.",
-    price: 11.9,
-    image_url:
-      "https://images.unsplash.com/photo-1617196034183-421b4917c92d?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-    tags: ["Signature"],
-  },
-  {
-    id: "poke-1",
-    category: "Poke Bowls",
-    name: "Raw Salmon Pesto Poke",
-    description:
-      "Sushi rice, salmon pesto, carrot, avocado, soya bean, mango, spring onion, house spicy mayo, eel sauce, sesame seeds.",
-    price: 11.9,
-    image_url:
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-    tags: ["Signature"],
-  },
-  {
-    id: "wok-48",
-    category: "Woks",
-    name: "Chicken Devil",
-    description:
-      "Marinated chicken, onion, tomato, bell pepper, garlic, spring onion, coriander, leeks.",
-    price: 13.9,
-    image_url:
-      "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-    tags: ["Spicy"],
-  },
-  {
-    id: "1-gyoza",
-    category: "Finger Foods",
-    name: "Gyoza",
-    description:
-      "Fried chicken, vegetables, kimchi, choice of dip. Sizes: 5 pcs, 10 pcs, or 15 pcs.",
-    price: 5.9,
-    image_url:
-      "https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-    tags: ["Popular"],
-  },
-  {
-    id: "3-fried-chicken",
-    category: "Finger Foods",
-    name: "Fried Chicken",
-    description: "Choice of dip. Sizes: 5 pcs, 10 pcs, or 15 pcs.",
-    price: 5.9,
-    image_url:
-      "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=800&q=80",
-    is_available: true,
-    tags: [],
-  },
-];
+const MENU_SKELETON_COUNT = 9;
+
+function MenuItemSkeleton() {
+  return (
+    <div className="group flex flex-col sm:flex-row gap-6 p-4 -mx-4 relative animate-pulse">
+      <div className="w-full sm:w-36 h-48 sm:h-36 shrink-0 bg-[var(--color-sumi)]/5" />
+      <div className="flex-1 flex flex-col justify-between py-1">
+        <div>
+          <div className="flex justify-between items-start mb-3 gap-4">
+            <div className="h-7 w-2/3 bg-[var(--color-sumi)]/10" />
+            <div className="h-6 w-16 bg-[var(--color-sumi)]/10" />
+          </div>
+          <div className="space-y-2 mb-4">
+            <div className="h-4 w-full bg-[var(--color-sumi)]/10" />
+            <div className="h-4 w-4/5 bg-[var(--color-sumi)]/10" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-px w-6 bg-[var(--color-sumi)]/20" />
+          <div className="h-4 w-28 bg-[var(--color-sumi)]/10" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function OrderOnline() {
   const { t } = useTranslation();
@@ -139,6 +69,7 @@ export function OrderOnline() {
   const hasAddedFromUrl = useRef(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
   const [menuLoadError, setMenuLoadError] = useState<string | null>(null);
   const [displayLimit, setDisplayLimit] = useState(10);
@@ -149,8 +80,6 @@ export function OrderOnline() {
   const loaderRef = useRef<HTMLDivElement>(null);
 
   const { addToCart, totalItems, totalPrice } = useCart();
-  const isFallbackMenuEnabled = import.meta.env.DEV;
-
   const categories: string[] = [
     "All",
     ...new Set<string>(menuItems.map((item) => item.category)),
@@ -168,48 +97,34 @@ export function OrderOnline() {
         setIsLoadingMenu(true);
         setMenuLoadError(null);
         const items = await getMenuItems();
-        if (items.length > 0) {
-          setMenuItems(items);
-        } else if (isFallbackMenuEnabled) {
-          console.warn("No menu items in Firestore, using fallback menu");
-          setMenuItems(FALLBACK_MENU);
-        } else {
-          setMenuItems([]);
-          setMenuLoadError(t("order.menuUnavailableDesc"));
-        }
+        setMenuItems(items);
+        if (items.length === 0) setMenuLoadError(t("order.menuUnavailableDesc"));
       } catch (err: any) {
-        if (isFallbackMenuEnabled) {
-          console.warn(
-            "Failed to load menu from Firestore, using fallback:",
-            err.message,
-          );
-          setMenuItems(FALLBACK_MENU);
-        } else {
-          console.warn("Failed to load menu from Firestore:", err.message);
-          setMenuItems([]);
-          setMenuLoadError(t("order.menuUnavailableDesc"));
-        }
+        console.warn("Failed to load menu from Firestore:", err.message);
+        setMenuItems([]);
+        setMenuLoadError(t("order.menuUnavailableDesc"));
       } finally {
         setIsLoadingMenu(false);
       }
     }
     loadMenu();
-  }, [isFallbackMenuEnabled, t]);
+  }, [t]);
   useEffect(() => {
     setDisplayLimit(ITEMS_PER_PAGE);
+    setIsLoadingMore(false);
   }, [activeCategory]);
 
   // Infinite Scroll Observer
   useEffect(() => {
-    if (isLoadingMenu) return;
+    if (isLoadingMenu || isLoadingMore || displayLimit >= filteredMenu.length) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && displayLimit < filteredMenu.length) {
-          setDisplayLimit((prev) => prev + ITEMS_PER_PAGE);
+        if (entries[0].isIntersecting) {
+          setIsLoadingMore(true);
         }
       },
-      { rootMargin: "900px 0px", threshold: 0 },
+      { rootMargin: "0px 0px 160px 0px", threshold: 0 },
     );
 
     if (loaderRef.current) {
@@ -217,7 +132,18 @@ export function OrderOnline() {
     }
 
     return () => observer.disconnect();
-  }, [isLoadingMenu, filteredMenu.length, displayLimit]);
+  }, [isLoadingMenu, isLoadingMore, filteredMenu.length, displayLimit]);
+
+  useEffect(() => {
+    if (!isLoadingMore) return;
+
+    const timeout = window.setTimeout(() => {
+      setDisplayLimit((prev) => Math.min(prev + ITEMS_PER_PAGE, filteredMenu.length));
+      setIsLoadingMore(false);
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [isLoadingMore, filteredMenu.length]);
 
   // Handle adding item from URL query parameter
   useEffect(() => {
@@ -399,8 +325,10 @@ export function OrderOnline() {
 
           {/* Menu Grid */}
           {isLoadingMenu ? (
-            <div className="flex flex-col items-center justify-center py-24">
-              <div className="w-12 h-12 border-2 border-[var(--color-shu)] border-t-transparent rounded-full animate-spin" />
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12">
+              {Array.from({ length: MENU_SKELETON_COUNT }).map((_, index) => (
+                <MenuItemSkeleton key={index} />
+              ))}
             </div>
           ) : filteredMenu.length === 0 ? (
             <div className="border border-[var(--color-sumi)]/10 bg-white/70 p-8 md:p-12 text-center max-w-3xl mx-auto">
@@ -535,7 +463,7 @@ export function OrderOnline() {
 
           {/* Infinite Scroll Trigger & Spinner */}
           {!isLoadingMenu && hasMore && (
-            <div ref={loaderRef} className="mt-16 flex justify-center py-8">
+            <div ref={loaderRef} className="mt-16 flex min-h-24 justify-center py-8">
               <div className="w-10 h-10 border-2 border-[var(--color-shu)] border-t-transparent rounded-full animate-spin" />
             </div>
           )}

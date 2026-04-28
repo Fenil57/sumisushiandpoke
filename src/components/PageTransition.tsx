@@ -46,7 +46,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
         style={{ pointerEvents: 'none' }}
       >
         <motion.div 
-          className="flex flex-col items-center gap-6 relative"
+          className="flex flex-col items-center gap-4 relative"
           initial={{ opacity: 1 }}
           animate={{ opacity: 0 }}
           transition={{ duration: 0.3, delay: 1.2 }}
@@ -58,6 +58,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
           <div className="relative z-10 w-full max-w-[calc(100vw-3rem)]">
             <BrandLogo
               stacked
+              showText={false}
               imageClassName="h-20 w-20 object-contain"
               textClassName="text-[clamp(1.45rem,6vw,3rem)] md:text-5xl font-serif font-bold tracking-[0.08em] sm:tracking-[0.14em] md:tracking-[0.16em] text-[#f9f6f0] leading-tight break-words"
               subtextClassName="text-[clamp(0.65rem,2.4vw,0.875rem)] md:text-sm tracking-[0.28em] sm:tracking-[0.4em] uppercase text-[#c92a2a] mt-2"
@@ -69,7 +70,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
             />
           </div>
           
-          <div className="w-64 h-[1px] bg-[#f9f6f0]/20 relative overflow-hidden mt-8">
+          <div className="w-64 h-[1px] bg-[#f9f6f0]/20 relative overflow-hidden mt-2">
             <motion.div 
               className="absolute top-0 left-0 bottom-0 w-full bg-[#c92a2a]"
               initial={{ x: "-100%" }}
