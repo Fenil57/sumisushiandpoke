@@ -9,7 +9,8 @@ const resources = {
         cancel: "Cancel",
         confirm: "Confirm",
         close: "Close",
-        dismiss: "Dismiss"
+        dismiss: "Dismiss",
+        unavailable: "Temporarily unavailable"
       },
       nav: {
         menu: "Menu",
@@ -123,6 +124,7 @@ const resources = {
         freeDeliveryWithinRadius: "Free delivery applies within {{km}} km.",
         standardDeliveryApplies: "This address is outside the free-delivery radius. Standard delivery pricing applies.",
         deliveryAddressRequired: "Delivery address is required for delivery orders.",
+        deliveryUnavailable: "Delivery details are temporarily unavailable. Please try again shortly or choose pickup.",
         nameRequired: "Full Name is required",
         phoneRequired: "Phone Number is required",
         deliveryAddressValidationError: "We could not validate that delivery address. Please try again.",
@@ -267,6 +269,7 @@ const resources = {
           }
         },
         fallback: "Prefer to call? Reach us at",
+        contactUnavailable: "Phone reservations are temporarily unavailable online. Please try again shortly.",
         phone: "+358 44 247 9393"
       }
     }
@@ -278,7 +281,8 @@ const resources = {
         cancel: "Peruuta",
         confirm: "Vahvista",
         close: "Sulje",
-        dismiss: "Sulje"
+        dismiss: "Sulje",
+        unavailable: "Tilapäisesti ei saatavilla"
       },
       nav: {
         menu: "Ruokalista",
@@ -392,6 +396,7 @@ const resources = {
         freeDeliveryWithinRadius: "Ilmainen toimitus koskee {{km}} km sädettä.",
         standardDeliveryApplies: "Tämä osoite on ilmaisen toimituksen alueen ulkopuolella. Normaali toimitushinnoittelu käytetään.",
         deliveryAddressRequired: "Toimitusosoite on pakollinen kotiinkuljetustilauksille.",
+        deliveryUnavailable: "Kotiinkuljetuksen tiedot eivät ole tilapäisesti saatavilla. Yritä hetken kuluttua uudelleen tai valitse nouto.",
         nameRequired: "Koko nimi on pakollinen",
         phoneRequired: "Puhelinnumero on pakollinen",
         deliveryAddressValidationError: "Toimitusosoitetta ei voitu vahvistaa. Yritä uudelleen.",
@@ -536,6 +541,7 @@ const resources = {
           }
         },
         fallback: "Haluatko soittaa? Tavoitat meidät numerosta",
+        contactUnavailable: "Puhelinvaraukset eivät ole tilapäisesti saatavilla verkossa. Yritä hetken kuluttua uudelleen.",
         phone: "+358 44 247 9393"
       }
     }

@@ -52,13 +52,19 @@ export default function KineticScrollGallery({ images }: KineticScrollGalleryPro
     { clamp: false }
   );
 
-  const fallbackImages = [
-    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=1200",
-    "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=1200",
-    "https://images.unsplash.com/photo-1617196034183-421b4917c92d?auto=format&fit=crop&q=80&w=1200",
-  ];
+  const galleryImages = images ?? [];
 
-  const galleryImages = images || fallbackImages;
+  if (galleryImages.length === 0) {
+    return (
+      <div className="py-10">
+        <div className="flex min-h-80 items-center justify-center rounded-lg border border-[var(--color-sumi)]/10 bg-[var(--color-sumi)]/[0.03] px-6 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-[var(--color-sumi)]/45">
+            No images found
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 py-10">

@@ -51,6 +51,30 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   sundayBuffetPrice: 14.9,
 };
 
+export const PLACEHOLDER_SETTINGS: SiteSettings = {
+  restaurantName: 'Sumi Sushi and Poke',
+  restaurantKanji: '\u70ad',
+  subtitle: 'Restaurant details are temporarily unavailable. Please try again shortly.',
+  contactEmail: '',
+  contactPhone: '',
+  address: 'Contact details temporarily unavailable',
+  deliveryFee: DEFAULT_SETTINGS.deliveryFee,
+  instagramUrl: '',
+  facebookUrl: '',
+  twitterUrl: '',
+  privacyPolicyUrl: '/privacy',
+  termsUrl: '/terms',
+  weekdayHours: 'Temporarily unavailable',
+  weekdayBuffetHours: 'Temporarily unavailable',
+  weekdayBuffetPrice: 0,
+  saturdayHours: 'Temporarily unavailable',
+  saturdayBuffetHours: 'Temporarily unavailable',
+  saturdayBuffetPrice: 0,
+  sundayHours: 'Temporarily unavailable',
+  sundayBuffetHours: 'Temporarily unavailable',
+  sundayBuffetPrice: 0,
+};
+
 export async function getSettings(): Promise<SiteSettings> {
   try {
     const ref = doc(db, SETTINGS_DOC);
@@ -79,7 +103,7 @@ export async function getSettings(): Promise<SiteSettings> {
     return DEFAULT_SETTINGS;
   } catch (error) {
     console.error('Error fetching settings:', error);
-    return DEFAULT_SETTINGS;
+    throw new Error('Could not load live site settings.');
   }
 }
 

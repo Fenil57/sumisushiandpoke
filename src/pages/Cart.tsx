@@ -156,7 +156,7 @@ export function Cart() {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const { settings } = useSettings();
+  const { settings, hasLiveSettings } = useSettings();
   const { cart, addToCart, removeFromCart, removeOneFromCart, clearCart, totalItems, totalPrice } = useCart();
 
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>("cart");
@@ -337,6 +337,10 @@ export function Cart() {
     }
     if (!isValidFinnishAddress(normalizedDeliveryAddress)) {
       setDeliveryAddressError("Please enter a valid address with street name, number, and city (e.g., Kauppakatu 5, Turku).");
+      return null;
+    }
+    if (!hasLiveSettings || !settings.address.trim()) {
+      setDeliveryAddressError(t("checkout.deliveryUnavailable"));
       return null;
     }
     if (hasValidatedDeliveryQuote && deliveryQuote) return deliveryQuote;

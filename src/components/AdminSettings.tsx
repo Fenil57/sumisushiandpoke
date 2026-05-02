@@ -26,9 +26,15 @@ export function AdminSettings() {
 
   useEffect(() => {
     async function loadData() {
-      const data = await getSettings();
-      setFormData(data);
-      setIsLoading(false);
+      try {
+        const data = await getSettings();
+        setFormData(data);
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+        setFormData(DEFAULT_SETTINGS);
+      } finally {
+        setIsLoading(false);
+      }
     }
     loadData();
   }, []);
