@@ -10,12 +10,10 @@ import {
 } from "../services/menuService";
 import { useCart } from "../context/CartContext";
 
-
-
 function pickFeaturedItems(items: MenuItem[]): MenuItem[] {
   // Primarily use the explicit is_featured flag
-  const explicitlyFeatured = items.filter(item => item.is_featured);
-  
+  const explicitlyFeatured = items.filter((item) => item.is_featured);
+
   if (explicitlyFeatured.length > 0) {
     return explicitlyFeatured.slice(0, 5);
   }
@@ -35,6 +33,9 @@ function pickFeaturedItems(items: MenuItem[]): MenuItem[] {
 export function MenuScroll() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
+  const [menuStatus, setMenuStatus] = useState<"loading" | "ready" | "empty">(
+    "loading",
+  );
   const [addedItemId, setAddedItemId] = useState<string | null>(null);
   const { t } = useTranslation();
   const { addToCart, cart } = useCart();
@@ -53,10 +54,18 @@ export function MenuScroll() {
     async function loadFeaturedItems() {
       try {
         const items = await getMenuItems();
-        if (!isMounted || items.length === 0) return;
+        if (!isMounted) return;
+
+        if (items.length === 0) {
+          setMenuStatus("empty");
+          return;
+        }
+
         setFeaturedItems(pickFeaturedItems(items));
+        setMenuStatus("ready");
       } catch (err) {
         console.error("Failed to load featured items:", err);
+        if (isMounted) setMenuStatus("empty");
       }
     }
 
@@ -99,100 +108,139 @@ export function MenuScroll() {
         </div>
 
         <div className="flex flex-col md:flex-row h-[70vh] min-h-[600px] w-full gap-2 md:gap-4">
-          {featuredItems.map((item, idx) => {
-            const isActive = activeIndex === idx;
-            const isAdded = addedItemId === item.id;
-            const defaultVariation = getDefaultMenuItemVariation(item);
-            const cartItem = cart.find((i) => i.item.id === item.id && i.variation.id === defaultVariation.id);
-            const isInCart = !!cartItem;
-            const cartQuantity = cartItem?.quantity || 0;
-            return (
-              <motion.div
-                key={item.id}
-                className="relative overflow-hidden cursor-pointer group rounded-sm"
-                animate={{
-                  flex: isActive ? 5 : 2,
-                }}
-                transition={{ duration: 0.7, ease: [0.32, 0.72, 0, 1] }}
-                onMouseEnter={() => setActiveIndex(idx)}
-                onClick={() => setActiveIndex(idx)}
-              >
-                {item.image_url ? (
-                  <img
-                    src={item.image_url}
-                    alt={item.name}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110"
-                    referrerPolicy="no-referrer"
+          {menuStatus === "empty" ? (
+            <div className="relative flex min-h-[420px] w-full items-center justify-center overflow-hidden rounded-sm border border-[var(--color-washi)]/15 bg-[#111]/60 px-6 text-center">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(201,42,42,0.16),transparent_55%)]" />
+              <div className="relative max-w-xl">
+                <p className="mb-4 text-xs font-medium uppercase tracking-[0.35em] text-[var(--color-shu)]">
+                  {t("menu.emptyEyebrow")}
+                </p>
+                <h3 className="font-serif text-3xl font-bold text-[var(--color-washi)] md:text-5xl">
+                  {t("menu.emptyTitle")}
+                </h3>
+                <p className="mx-auto mt-5 max-w-md text-sm leading-7 text-[var(--color-washi)]/70 md:text-base">
+                  {t("menu.emptyDesc")}
+                </p>
+                <Link
+                  to="/order"
+                  className="mt-8 inline-flex items-center border-b border-[var(--color-washi)] pb-1 text-xs font-medium uppercase tracking-[0.2em] text-[var(--color-washi)] transition-colors hover:border-[var(--color-shu)] hover:text-[var(--color-shu)]"
+                >
+                  {t("menu.viewFull")}
+                </Link>
+              </div>
+            </div>
+          ) : (
+            featuredItems.map((item, idx) => {
+              const isActive = activeIndex === idx;
+              const isAdded = addedItemId === item.id;
+              const defaultVariation = getDefaultMenuItemVariation(item);
+              const cartItem = cart.find(
+                (i) =>
+                  i.item.id === item.id &&
+                  i.variation.id === defaultVariation.id,
+              );
+              const isInCart = !!cartItem;
+              return (
+                <motion.div
+                  key={item.id}
+                  className="relative overflow-hidden cursor-pointer group rounded-sm"
+                  animate={{
+                    flex: isActive ? 5 : 2,
+                  }}
+                  transition={{ duration: 0.7, ease: [0.32, 0.72, 0, 1] }}
+                  onMouseEnter={() => setActiveIndex(idx)}
+                  onClick={() => setActiveIndex(idx)}
+                >
+                  {item.image_url ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-[var(--color-sumi)] flex items-center justify-center text-[#f9f6f0]/20">
+                      <span className="font-serif text-5xl tracking-[0.2em]">
+                        SUMI
+                      </span>
+                    </div>
+                  )}
+
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-t from-[#1c1c1c]/90 via-[#1c1c1c]/20 to-transparent transition-opacity duration-700 ${isActive ? "opacity-100" : "opacity-60"}`}
                   />
-                ) : (
-                  <div className="absolute inset-0 bg-[var(--color-sumi)] flex items-center justify-center text-[#f9f6f0]/20">
-                    <span className="font-serif text-5xl tracking-[0.2em]">SUMI</span>
-                  </div>
-                )}
 
-                <div
-                  className={`absolute inset-0 bg-gradient-to-t from-[#1c1c1c]/90 via-[#1c1c1c]/20 to-transparent transition-opacity duration-700 ${isActive ? "opacity-100" : "opacity-60"}`}
-                />
-
-                <div className="absolute inset-0 flex flex-col">
-                  <AnimatePresence mode="wait">
-                    {isActive ? (
-                      <motion.div
-                        key="active"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.4, delay: 0.2 }}
-                        className="flex flex-col h-full justify-end p-6 md:p-8"
-                      >
-                        <div className="text-[#c92a2a] text-sm font-medium tracking-widest mb-3" aria-hidden="true">
-                          {String(idx + 1).padStart(2, "0")}
-                        </div>
-                        <h3 className="text-3xl md:text-5xl text-[#f9f6f0] font-serif font-bold mb-4">
-                          {item.name}
-                        </h3>
-                        <p className="text-[#f9f6f0]/80 text-sm max-w-md leading-relaxed mb-6 hidden md:block">
-                          {item.description}
-                        </p>
-
-                        <div className="flex items-center justify-between mt-auto pt-4 border-t border-[#f9f6f0]/20">
-                          <span className="text-xl md:text-2xl text-[#f9f6f0] font-medium">
-                            {getMenuItemPriceRange(item)}
-                          </span>
-                          <button
-                            onClick={(e) => handleAddToCart(e, item)}
-                            aria-label={`Add ${item.name} to cart`}
-                            className={`text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium transition-colors flex items-center gap-2 cursor-pointer ${isAdded || isInCart ? 'text-[var(--color-shu)]' : 'text-[#f9f6f0] hover:text-[#c92a2a]'}`}
+                  <div className="absolute inset-0 flex flex-col">
+                    <AnimatePresence mode="wait">
+                      {isActive ? (
+                        <motion.div
+                          key="active"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.4, delay: 0.2 }}
+                          className="flex flex-col h-full justify-end p-6 md:p-8"
+                        >
+                          <div
+                            className="text-[#c92a2a] text-sm font-medium tracking-widest mb-3"
+                            aria-hidden="true"
                           >
-                            <span className="w-4 md:w-8 h-[1px] bg-current" aria-hidden="true"></span>{" "}
-                            {isAdded || isInCart ? "Added!" : t("menu.orderNow")}
-                          </button>
-                        </div>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="inactive"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="flex flex-col items-center justify-center md:items-start md:justify-center h-full p-4 md:py-8 md:px-2"
-                      >
-                        <div className="flex flex-col items-center">
-                          <div className="text-[#f9f6f0]/50 text-xs font-medium tracking-widest mb-2 md:mb-4" aria-hidden="true">
                             {String(idx + 1).padStart(2, "0")}
                           </div>
-                          <h3 className="text-xl md:text-2xl text-[#f9f6f0] font-serif font-bold md:[writing-mode:vertical-rl] md:rotate-180 whitespace-nowrap">
+                          <h3 className="text-3xl md:text-5xl text-[#f9f6f0] font-serif font-bold mb-4">
                             {item.name}
                           </h3>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            );
-          })}
+                          <p className="text-[#f9f6f0]/80 text-sm max-w-md leading-relaxed mb-6 hidden md:block">
+                            {item.description}
+                          </p>
+
+                          <div className="flex items-center justify-between mt-auto pt-4 border-t border-[#f9f6f0]/20">
+                            <span className="text-xl md:text-2xl text-[#f9f6f0] font-medium">
+                              {getMenuItemPriceRange(item)}
+                            </span>
+                            <button
+                              onClick={(e) => handleAddToCart(e, item)}
+                              aria-label={`Add ${item.name} to cart`}
+                              className={`text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium transition-colors flex items-center gap-2 cursor-pointer ${isAdded || isInCart ? "text-[var(--color-shu)]" : "text-[#f9f6f0] hover:text-[#c92a2a]"}`}
+                            >
+                              <span
+                                className="w-4 md:w-8 h-[1px] bg-current"
+                                aria-hidden="true"
+                              ></span>{" "}
+                              {isAdded || isInCart
+                                ? "Added!"
+                                : t("menu.orderNow")}
+                            </button>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="inactive"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="flex flex-col items-center justify-center md:items-start md:justify-center h-full p-4 md:py-8 md:px-2"
+                        >
+                          <div className="flex flex-col items-center">
+                            <div
+                              className="text-[#f9f6f0]/50 text-xs font-medium tracking-widest mb-2 md:mb-4"
+                              aria-hidden="true"
+                            >
+                              {String(idx + 1).padStart(2, "0")}
+                            </div>
+                            <h3 className="text-xl md:text-2xl text-[#f9f6f0] font-serif font-bold md:[writing-mode:vertical-rl] md:rotate-180 whitespace-nowrap">
+                              {item.name}
+                            </h3>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
         </div>
       </div>
     </section>

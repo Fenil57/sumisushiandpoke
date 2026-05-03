@@ -28,7 +28,10 @@ const resources = {
         crafted: "Crafted with",
         precision: "precision",
         viewFull: "View Full Menu",
-        orderNow: "Order Now"
+        orderNow: "Order Now",
+        emptyEyebrow: "Menu updating",
+        emptyTitle: "Featured dishes are being prepared",
+        emptyDesc: "Today's highlights are not available online yet. Please check the full menu again shortly or contact the restaurant directly."
       },
       chef: {
         ourMasters: "Our Masters",
@@ -300,7 +303,10 @@ const resources = {
         crafted: "Valmistettu",
         precision: "tarkkuudella",
         viewFull: "Koko Ruokalista",
-        orderNow: "Tilaa Nyt"
+        orderNow: "Tilaa Nyt",
+        emptyEyebrow: "Ruokalistaa päivitetään",
+        emptyTitle: "Suositellut annokset ovat valmistelussa",
+        emptyDesc: "Päivän suositukset eivät ole vielä saatavilla verkossa. Tarkista koko ruokalista hetken kuluttua tai ota yhteyttä ravintolaan."
       },
       chef: {
         ourMasters: "Mestarimme",
