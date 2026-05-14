@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Search, Pencil, Trash2, Eye, EyeOff, X, Save, Image as ImageIcon,
-  GripVertical, Tag, DollarSign, FileText, ChevronDown, Loader2, AlertCircle
+  GripVertical, Tag, DollarSign, FileText, ChevronDown, Loader2, AlertCircle, Trash
 } from 'lucide-react';
 import {
   getAllMenuItems,
@@ -37,6 +37,7 @@ type ModalMode = 'create' | 'edit' | null;
 const isMenuImageUploadEnabled = import.meta.env.VITE_ENABLE_MENU_IMAGE_UPLOAD === 'true';
 const MAX_MENU_IMAGE_SIZE_MB = 5;
 const MAX_MENU_IMAGE_SIZE_BYTES = MAX_MENU_IMAGE_SIZE_MB * 1024 * 1024;
+const ALLOWED_MENU_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MENU_IMAGE_HELP_TEXT = `JPG, PNG, or WebP. Max ${MAX_MENU_IMAGE_SIZE_MB} MB. Recommended landscape photo: 1200 x 800 px or larger.`;
 
 const makeVariationId = () => `var-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -140,7 +141,7 @@ export function AdminMenuManager() {
       return true;
     }
 
-    if (!file.type.startsWith('image/')) {
+    if (!ALLOWED_MENU_IMAGE_TYPES.includes(file.type)) {
       setImageFile(null);
       setImagePreviewUrl(null);
       showToast('Please upload a JPG, PNG, or WebP image file');
@@ -157,6 +158,11 @@ export function AdminMenuManager() {
     setImageFile(file);
     setImagePreviewUrl(URL.createObjectURL(file));
     return true;
+  };
+
+  const handleRemoveImage = () => {
+    handleImageFileChange(null);
+    setEditItem(prev => ({ ...prev, image_url: '' }));
   };
 
   const handleSave = async () => {
@@ -179,6 +185,7 @@ export function AdminMenuManager() {
 
     setIsSaving(true);
     try {
+      const itemId = modalMode === 'create' ? generateId(editItem.name) : editItem.id;
       let imageUrl = editItem.image_url;
       if (imageFile && !isMenuImageUploadEnabled) {
         explainDisabledUpload();
@@ -186,7 +193,7 @@ export function AdminMenuManager() {
         return;
       }
       if (imageFile && isMenuImageUploadEnabled) {
-        imageUrl = await uploadMenuItemImage(imageFile, editItem.name);
+        imageUrl = await uploadMenuItemImage(imageFile, itemId, editItem.category);
       }
 
       const itemToSave = {
@@ -194,7 +201,7 @@ export function AdminMenuManager() {
         image_url: imageUrl,
         variations: normalizedVariations,
         price: normalizedVariations[0].price,
-        id: modalMode === 'create' ? generateId(editItem.name) : editItem.id,
+        id: itemId,
       };
       await upsertMenuItem(itemToSave);
       showToast(modalMode === 'create' ? '✅ Item created successfully' : '✅ Item updated successfully');
@@ -632,8 +639,16 @@ export function AdminMenuManager() {
                           (e.target as HTMLImageElement).style.display = 'none';
                         }}
                       />
-                      <div className="absolute inset-0 bg-[var(--color-sumi)]/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-[var(--color-washi)] text-xs tracking-[0.2em] uppercase">Image preview</span>
+                      <div className="absolute inset-0 bg-[var(--color-sumi)]/50 opacity-0 group-hover/img:opacity-100 group-focus-within/img:opacity-100 transition-opacity flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          title="Remove image"
+                          aria-label="Remove image"
+                          className="inline-flex h-11 w-11 items-center justify-center bg-[var(--color-shu)] text-[var(--color-washi)] hover:bg-[var(--color-washi)] hover:text-[var(--color-sumi)] focus:outline-none focus:ring-2 focus:ring-[var(--color-washi)]/70 transition-colors cursor-pointer"
+                        >
+                          <Trash size={18} aria-hidden="true" />
+                        </button>
                       </div>
                     </div>
                   ) : (
@@ -669,7 +684,7 @@ export function AdminMenuManager() {
                   <div className="relative">
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                       disabled={!isMenuImageUploadEnabled}
                       onChange={(e) => {
                         const input = e.currentTarget;
@@ -709,9 +724,11 @@ export function AdminMenuManager() {
                       <button
                         type="button"
                         onClick={() => handleImageFileChange(null)}
-                        className="text-[10px] uppercase tracking-[0.15em] text-[var(--color-shu)] hover:text-[var(--color-washi)] transition-colors cursor-pointer"
+                        title="Remove selected file"
+                        aria-label="Remove selected file"
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--color-shu)] hover:text-[var(--color-washi)] focus:outline-none focus:ring-2 focus:ring-[var(--color-shu)]/60 transition-colors cursor-pointer"
                       >
-                        Clear File
+                        <Trash size={16} aria-hidden="true" />
                       </button>
                     )}
                   </div>

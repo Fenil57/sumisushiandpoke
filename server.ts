@@ -35,6 +35,8 @@ const FLATPAY_CHECKOUT_API_BASE_URL = 'https://checkout-api.frisbii.com/v1';
 const FLATPAY_API_BASE_URL = 'https://api.frisbii.com/v1';
 const FLATPAY_FALLBACK_CHECKOUT_URL = 'https://checkout.reepay.com/#/session/';
 const SUCCESSFUL_CHARGE_STATES = new Set(['authorized', 'settled']);
+const ORDER_STATUSES = new Set(['pending', 'preparing', 'ready', 'completed', 'cancelled']);
+const RESERVATION_STATUSES = new Set(['pending', 'confirmed', 'cancelled']);
 
 // ============================================================================
 // CACHING - Reduce Firestore reads and redundant API calls
@@ -2354,6 +2356,11 @@ app.patch('/api/admin/orders/:orderId/status', requireAdminAuth, async (req, res
   try {
     const { orderId } = req.params;
     const { status } = req.body;
+
+    if (!ORDER_STATUSES.has(status)) {
+      return res.status(400).json({ error: 'Invalid order status.' });
+    }
+
     const db = requireAdminDb();
     const orderRef = db.collection(ORDERS_COLLECTION).doc(orderId);
     const snapshot = await orderRef.get();
@@ -2391,6 +2398,11 @@ app.patch('/api/admin/reservations/:reservationId/status', requireAdminAuth, asy
   try {
     const { reservationId } = req.params;
     const { status } = req.body;
+
+    if (!RESERVATION_STATUSES.has(status)) {
+      return res.status(400).json({ error: 'Invalid reservation status.' });
+    }
+
     const db = requireAdminDb();
     const resRef = db.collection(RESERVATIONS_COLLECTION).doc(reservationId);
     const snapshot = await resRef.get();

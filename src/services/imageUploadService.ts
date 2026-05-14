@@ -8,15 +8,39 @@ function sanitizeFileBaseName(value: string): string {
     .replace(/^-|-$/g, '');
 }
 
-export async function uploadMenuItemImage(
-  file: File,
-  itemName: string,
-): Promise<string> {
-  const extension = file.name.includes('.')
+function makeUploadId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getImageExtension(file: File): string {
+  const extensionByType: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+  };
+
+  if (extensionByType[file.type]) {
+    return extensionByType[file.type];
+  }
+
+  return file.name.includes('.')
     ? file.name.split('.').pop()?.toLowerCase() || 'jpg'
     : 'jpg';
-  const safeName = sanitizeFileBaseName(itemName) || 'menu-item';
-  const filePath = `menu-items/${safeName}-${Date.now()}.${extension}`;
+}
+
+export async function uploadMenuItemImage(
+  file: File,
+  itemId: string,
+  category: string,
+): Promise<string> {
+  const extension = getImageExtension(file);
+  const safeCategory = sanitizeFileBaseName(category) || 'uncategorized';
+  const safeItemId = sanitizeFileBaseName(itemId) || 'menu-item';
+  const filePath = `menu-items/${safeCategory}/${safeItemId}/${Date.now()}-${makeUploadId()}.${extension}`;
   const storageRef = ref(storage, filePath);
 
   await uploadBytes(storageRef, file, {

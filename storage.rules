@@ -9,15 +9,30 @@ service firebase.storage {
         ).data.role == 'admin';
     }
 
-    function isValidMenuImage() {
-      return request.resource != null &&
-        request.resource.size <= 5 * 1024 * 1024 &&
-        request.resource.contentType.matches('image/.*');
+    function isAllowedImageType() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp)');
     }
 
-    match /menu-items/{fileName} {
+    function hasAllowedImageExtension(fileName) {
+      return fileName.matches('.*\\.(jpg|jpeg|png|webp|JPG|JPEG|PNG|WEBP)');
+    }
+
+    function isValidImage(maxSizeInBytes, fileName) {
+      return request.resource != null &&
+        request.resource.size <= maxSizeInBytes &&
+        isAllowedImageType() &&
+        hasAllowedImageExtension(fileName);
+    }
+
+    match /menu-items/{category}/{itemId}/{fileName} {
       allow read: if true;
-      allow create, update: if isAdmin() && isValidMenuImage();
+      allow create, update: if isAdmin() && isValidImage(5 * 1024 * 1024, fileName);
+      allow delete: if isAdmin();
+    }
+
+    match /site-assets/{assetType}/{fileName} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidImage(2 * 1024 * 1024, fileName);
       allow delete: if isAdmin();
     }
 
