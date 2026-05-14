@@ -35,6 +35,9 @@ const EMPTY_ITEM: MenuItem = {
 
 type ModalMode = 'create' | 'edit' | null;
 const isMenuImageUploadEnabled = import.meta.env.VITE_ENABLE_MENU_IMAGE_UPLOAD === 'true';
+const MAX_MENU_IMAGE_SIZE_MB = 5;
+const MAX_MENU_IMAGE_SIZE_BYTES = MAX_MENU_IMAGE_SIZE_MB * 1024 * 1024;
+const MENU_IMAGE_HELP_TEXT = `JPG, PNG, or WebP. Max ${MAX_MENU_IMAGE_SIZE_MB} MB. Recommended landscape photo: 1200 x 800 px or larger.`;
 
 const makeVariationId = () => `var-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -126,13 +129,34 @@ export function AdminMenuManager() {
     setModalMode('edit');
   };
 
-  const handleImageFileChange = (file: File | null) => {
-    setImageFile(file);
-    if (!file) {
-      setImagePreviewUrl(null);
-      return;
+  const handleImageFileChange = (file: File | null): boolean => {
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
     }
+
+    if (!file) {
+      setImageFile(null);
+      setImagePreviewUrl(null);
+      return true;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setImageFile(null);
+      setImagePreviewUrl(null);
+      showToast('Please upload a JPG, PNG, or WebP image file');
+      return false;
+    }
+
+    if (file.size > MAX_MENU_IMAGE_SIZE_BYTES) {
+      setImageFile(null);
+      setImagePreviewUrl(null);
+      showToast(`Image is too large. Please upload an image under ${MAX_MENU_IMAGE_SIZE_MB} MB`);
+      return false;
+    }
+
+    setImageFile(file);
     setImagePreviewUrl(URL.createObjectURL(file));
+    return true;
   };
 
   const handleSave = async () => {
@@ -647,7 +671,13 @@ export function AdminMenuManager() {
                       type="file"
                       accept="image/*"
                       disabled={!isMenuImageUploadEnabled}
-                      onChange={(e) => handleImageFileChange(e.target.files?.[0] || null)}
+                      onChange={(e) => {
+                        const input = e.currentTarget;
+                        const accepted = handleImageFileChange(input.files?.[0] || null);
+                        if (!accepted) {
+                          input.value = '';
+                        }
+                      }}
                       className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-4 py-3 text-sm file:mr-4 file:border-0 file:bg-[var(--color-shu)] file:px-3 file:py-2 file:text-[var(--color-washi)] file:cursor-pointer disabled:cursor-not-allowed disabled:opacity-45"
                     />
                     {!isMenuImageUploadEnabled && (
@@ -660,17 +690,19 @@ export function AdminMenuManager() {
                       />
                     )}
                   </div>
-                  <div className="mt-3 flex items-start gap-2 border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-[10px] text-amber-200/90">
-                    <AlertCircle size={12} className="mt-0.5 shrink-0" />
-                    <span>
-                      Direct upload is disabled for now because Firebase Storage is not enabled on the current plan.
-                      Keep using the Image URL field above. When Storage is enabled later, this upload area can be turned on without redesigning the menu form.
-                    </span>
-                  </div>
+                  {!isMenuImageUploadEnabled && (
+                    <div className="mt-3 flex items-start gap-2 border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-[10px] text-amber-200/90">
+                      <AlertCircle size={12} className="mt-0.5 shrink-0" />
+                      <span>
+                        Direct upload is disabled for now because Firebase Storage is not enabled on the current plan.
+                        Keep using the Image URL field above. When Storage is enabled later, this upload area can be turned on without redesigning the menu form.
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mt-2 gap-4">
                     <p className="text-[10px] text-[var(--color-washi)]/25">
                       {isMenuImageUploadEnabled
-                        ? 'If a file is selected, it will be uploaded on save and used instead of the URL.'
+                        ? `${MENU_IMAGE_HELP_TEXT} If a file is selected, it will be uploaded on save and used instead of the URL.`
                         : 'This control is intentionally visible for future use, but inactive for now.'}
                     </p>
                     {imageFile && (
