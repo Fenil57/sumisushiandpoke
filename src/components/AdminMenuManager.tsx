@@ -15,6 +15,7 @@ import {
   type MenuItemVariation,
 } from '../services/menuService';
 import { uploadMenuItemImage } from '../services/imageUploadService';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 // Predefined categories as fallback, but we'll also derive them from data
 const DEFAULT_CATEGORIES = ['Sushi', 'Woks', 'Finger Foods', 'Drinks', 'Poke Bowls', 'Appetizers', 'Rice & Noodles', 'Kids Meals', 'Sushi Assortments'];
@@ -348,6 +349,8 @@ export function AdminMenuManager() {
   };
 
   const previewImageSrc = imagePreviewUrl || editItem.image_url;
+
+  useBodyScrollLock(Boolean(modalMode));
 
   return (
     <div className="relative">

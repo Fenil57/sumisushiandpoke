@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AlertTriangle, X } from "lucide-react";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -25,20 +26,16 @@ export function ConfirmationModal({
 }: ConfirmationModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  useBodyScrollLock(isOpen);
 
   // Store the element that triggered the modal so we can restore focus
   useEffect(() => {
     if (isOpen) {
       previousFocusRef.current = document.activeElement as HTMLElement;
-      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = "";
       // Restore focus to trigger element
       previousFocusRef.current?.focus();
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [isOpen]);
 
   // Focus first focusable element when modal opens
