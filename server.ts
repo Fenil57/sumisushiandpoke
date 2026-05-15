@@ -257,7 +257,11 @@ function isAllowedOrigin(origin: string): boolean {
 
     const configuredBaseUrl = process.env.APP_BASE_URL?.trim();
     if (configuredBaseUrl) {
-      return parsed.origin === new URL(configuredBaseUrl).origin;
+      const configuredHostname = new URL(configuredBaseUrl).hostname.replace(/^www\./, '');
+      const parsedHostname = parsed.hostname.replace(/^www\./, '');
+      if (parsedHostname === configuredHostname) {
+        return true;
+      }
     }
 
     // On Vercel, the VERCEL_URL env var is set automatically.
