@@ -1902,7 +1902,7 @@ app.post('/api/flatpay/session', checkoutLimiter, async (req, res) => {
   }
 });
 
-app.post('/api/orders/manual', requireAdminAuth, checkoutLimiter, async (req, res) => {
+app.post('/api/orders/manual', checkoutLimiter, async (req, res) => {
   try {
     requireAdminDb();
 
