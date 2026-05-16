@@ -12,6 +12,14 @@ const resources = {
         dismiss: "Dismiss",
         unavailable: "Temporarily unavailable"
       },
+      serviceClosed: {
+        bannerTitle: "Our online ordering service is temporarily closed due to technical issues.",
+        bannerCta: "For online orders, please call us at",
+        popupTitle: "Online Delivery Unavailable",
+        popupDesc: "Our online delivery ordering is temporarily closed due to technical maintenance. We sincerely apologize for the inconvenience.",
+        popupCta: "To place a delivery order, please call us directly:",
+        popupDismiss: "Got it"
+      },
       nav: {
         menu: "Menu",
         delivery: "Delivery",
@@ -272,8 +280,7 @@ const resources = {
           }
         },
         fallback: "Prefer to call? Reach us at",
-        contactUnavailable: "Phone reservations are temporarily unavailable online. Please try again shortly.",
-        phone: "+358 44 247 9393"
+        contactUnavailable: "Phone reservations are temporarily unavailable online. Please try again shortly."
       }
     }
   },
@@ -286,6 +293,14 @@ const resources = {
         close: "Sulje",
         dismiss: "Sulje",
         unavailable: "Tilapäisesti ei saatavilla"
+      },
+      serviceClosed: {
+        bannerTitle: "Verkkopalvelumme on tilapäisesti suljettu teknisten ongelmien vuoksi.",
+        bannerCta: "Verkkotilauksiin soita meille numeroon",
+        popupTitle: "Verkkotoimitus ei saatavilla",
+        popupDesc: "Verkkokuljetustilauksemme on tilapäisesti suljettu teknisen huollon vuoksi. Pahoittelemme vilpittömästi aiheutunutta vaivaa.",
+        popupCta: "Tehdäksesi kuljetustilauksen, soita meille suoraan:",
+        popupDismiss: "Selvä"
       },
       nav: {
         menu: "Ruokalista",
@@ -547,8 +562,7 @@ const resources = {
           }
         },
         fallback: "Haluatko soittaa? Tavoitat meidät numerosta",
-        contactUnavailable: "Puhelinvaraukset eivät ole tilapäisesti saatavilla verkossa. Yritä hetken kuluttua uudelleen.",
-        phone: "+358 44 247 9393"
+        contactUnavailable: "Puhelinvaraukset eivät ole tilapäisesti saatavilla verkossa. Yritä hetken kuluttua uudelleen."
       }
     }
   }

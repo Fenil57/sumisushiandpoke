@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useSettings } from "../hooks/useSettings";
 import { getApiUrl, readApiJson } from "../lib/api";
 import { useCart } from "../context/CartContext";
+import { SERVICE_TEMPORARILY_CLOSED, ServiceClosedPopup } from "../components/ServiceClosed";
 
 const RamenBowlIcon = ({
   className = "w-6 h-6",
@@ -172,6 +173,7 @@ export function Cart() {
   const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
   const [deliveryAddressError, setDeliveryAddressError] = useState<string | null>(null);
   const [isCheckingDelivery, setIsCheckingDelivery] = useState(false);
+  const [showServiceClosedPopup, setShowServiceClosedPopup] = useState(false);
 
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -248,7 +250,13 @@ export function Cart() {
     setPaymentError(null);
   };
 
-  const handleProceedToCustomerInfo = () => setCheckoutStep("customer-info");
+  const handleProceedToCustomerInfo = () => {
+    if (SERVICE_TEMPORARILY_CLOSED) {
+      setShowServiceClosedPopup(true);
+      return;
+    }
+    setCheckoutStep("customer-info");
+  };
 
   useEffect(() => {
     setDeliveryAddressError(null);
@@ -769,6 +777,11 @@ export function Cart() {
           </div>
         </div>
       </div>
+
+      <ServiceClosedPopup
+        isOpen={showServiceClosedPopup}
+        onClose={() => setShowServiceClosedPopup(false)}
+      />
     </div>
   );
 }

@@ -23,6 +23,7 @@ import { Footer } from "./components/Footer";
 import { PageTransition } from "./components/PageTransition";
 import { CustomCursor } from "./components/CustomCursor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ServiceClosedBanner } from "./components/ServiceClosed";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -138,6 +139,7 @@ function AppContent() {
       <div
         className={`min-h-screen font-sans ${isAdminRoute ? "bg-[var(--color-sumi)] text-[var(--color-washi)]" : "bg-[#fdfbf7] text-[#2c2825] selection:bg-[#d4a373] selection:text-white"} flex flex-col`}
       >
+        {!isAdminRoute && <ServiceClosedBanner />}
         {!isAdminRoute && <Navbar />}
         <main id="main-content" className="flex-1" role="main">
           <AnimatedRoutes />

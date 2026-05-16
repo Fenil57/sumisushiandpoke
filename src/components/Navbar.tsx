@@ -128,7 +128,8 @@ export function Navbar() {
     <>
       <nav
         aria-label="Main navigation"
-        className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 md:px-6 lg:px-8 transition-all duration-700 ${isScrolled ? "bg-[var(--color-washi)]/60 backdrop-blur-lg py-4 shadow-sm" : "bg-transparent py-6"}`}
+        className={`fixed left-0 right-0 z-50 flex items-center justify-between px-3 md:px-6 lg:px-8 transition-all duration-700 ${isScrolled ? "bg-[var(--color-washi)]/60 backdrop-blur-lg py-4 shadow-sm" : "bg-transparent py-6"}`}
+        style={{ top: "var(--banner-h, 0px)" }}
       >
         {/* Logo */}
         <Link
