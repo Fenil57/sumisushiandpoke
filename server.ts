@@ -1167,8 +1167,8 @@ async function createFlatpayChargeSession(params: {
           phone: checkout.customerInfo.phone,
         },
       },
-      accept_url: `${baseUrl}/order?flatpay=success`,
-      cancel_url: `${baseUrl}/order?flatpay=cancelled`,
+      accept_url: `${baseUrl}/cart?invoice=${handle}&flatpay=success`,
+      cancel_url: `${baseUrl}/cart?flatpay=cancelled`,
     }),
   });
 

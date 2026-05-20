@@ -517,6 +517,34 @@ export function Cart() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {paymentError && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-sumi)]/80 backdrop-blur-sm px-6">
+            <motion.div
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-[var(--color-washi)] p-12 max-w-md w-full text-center relative border border-[var(--color-shu)]/40 shadow-2xl"
+            >
+              <div className="w-16 h-16 bg-[var(--color-shu)] text-[var(--color-washi)] rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+              <h2 className="text-3xl font-serif font-bold text-[var(--color-sumi)] mb-4">{t("checkout.paymentFailedTitle")}</h2>
+              <p className="text-[var(--color-sumi)]/70 mb-8 text-sm leading-relaxed">
+                {paymentError}
+              </p>
+              <button
+                onClick={() => setPaymentError(null)}
+                className="inline-block px-8 py-4 bg-[var(--color-sumi)] text-[var(--color-washi)] text-xs tracking-[0.2em] uppercase font-medium hover:bg-[var(--color-shu)] transition-colors w-full cursor-pointer"
+              >
+                {t("common.dismiss")}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-[1440px] mx-auto px-4 md:px-6 lg:px-8 relative z-10 flex flex-col lg:flex-row gap-10">
         <div className="flex-1">
           <Link to="/order" className="inline-flex items-center gap-2 text-xs tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)]/50 hover:text-[var(--color-shu)] transition-colors mb-8 group">
@@ -732,12 +760,7 @@ export function Cart() {
                   </div>
                 )}
 
-                {paymentError && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 p-3 mb-4">
-                    <AlertCircle size={10} className="text-red-400 shrink-0" />
-                    <span className="text-red-400 text-xs">{paymentError}</span>
-                  </motion.div>
-                )}
+
 
                 <div className="flex flex-col gap-3">
                   <motion.button 
