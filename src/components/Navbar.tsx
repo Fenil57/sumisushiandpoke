@@ -224,14 +224,21 @@ export function Navbar() {
               aria-label={`Shopping cart${totalItems > 0 ? `, ${totalItems} item${totalItems === 1 ? "" : "s"}` : ", empty"}`}
             >
               <ShoppingBag size={20} aria-hidden="true" />
-              {totalItems > 0 && (
-                <span
-                  className="absolute top-0 right-0 bg-[var(--color-shu)] text-[var(--color-washi)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
-                  aria-hidden="true"
-                >
-                  {totalItems}
-                </span>
-              )}
+              <AnimatePresence mode="popLayout">
+                {totalItems > 0 && (
+                  <motion.span
+                    key={totalItems}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: [0.6, 1.2, 1], opacity: 1 }}
+                    exit={{ scale: 0.6, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 600, damping: 15 }}
+                    className="absolute top-0 right-0 bg-[var(--color-shu)] text-[var(--color-washi)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                    aria-hidden="true"
+                  >
+                    {totalItems}
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </Link>
           </div>
 
@@ -253,14 +260,21 @@ export function Navbar() {
               aria-label={`Shopping cart${totalItems > 0 ? `, ${totalItems} item${totalItems === 1 ? "" : "s"}` : ", empty"}`}
             >
               <ShoppingBag size={20} aria-hidden="true" />
-              {totalItems > 0 && (
-                <span
-                  className="absolute -top-1 -right-1 bg-[var(--color-shu)] text-[var(--color-washi)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
-                  aria-hidden="true"
-                >
-                  {totalItems}
-                </span>
-              )}
+              <AnimatePresence mode="popLayout">
+                {totalItems > 0 && (
+                  <motion.span
+                    key={totalItems}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: [0.6, 1.2, 1], opacity: 1 }}
+                    exit={{ scale: 0.6, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 600, damping: 15 }}
+                    className="absolute -top-1 -right-1 bg-[var(--color-shu)] text-[var(--color-washi)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                    aria-hidden="true"
+                  >
+                    {totalItems}
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </Link>
             <button
               ref={menuToggleRef}

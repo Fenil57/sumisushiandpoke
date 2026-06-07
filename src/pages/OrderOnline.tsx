@@ -80,6 +80,15 @@ export function OrderOnline() {
   const loaderRef = useRef<HTMLDivElement>(null);
 
   const { addToCart, totalItems, totalPrice } = useCart();
+  const [addedItemIds, setAddedItemIds] = useState<Record<string, boolean>>({});
+
+  const handleAddToCart = (item: MenuItem, selectedVariation: any) => {
+    addToCart(item, selectedVariation);
+    setAddedItemIds((prev) => ({ ...prev, [item.id]: true }));
+    setTimeout(() => {
+      setAddedItemIds((prev) => ({ ...prev, [item.id]: false }));
+    }, 1500);
+  };
   const categories: string[] = [
     "All",
     ...new Set<string>(menuItems.map((item) => item.category)),
@@ -447,11 +456,35 @@ export function OrderOnline() {
                           </div>
                         )}
                         <button
-                          onClick={() => addToCart(item, selectedVariation)}
-                          className="self-start mt-auto text-xs tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors flex items-center gap-2 group/btn cursor-pointer"
+                          onClick={() => handleAddToCart(item, selectedVariation)}
+                          className="self-start mt-auto text-xs tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors flex items-center gap-2 group/btn cursor-pointer min-h-6"
                         >
-                          <span className="w-6 h-[1px] bg-current transition-all duration-300 group-hover/btn:w-10"></span>{" "}
-                          {t("order.addToOrder")}
+                          <AnimatePresence mode="wait">
+                            {addedItemIds[item.id] ? (
+                              <motion.span
+                                key="added"
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -5 }}
+                                transition={{ duration: 0.15 }}
+                                className="text-green-600 font-bold flex items-center gap-1.5"
+                              >
+                                ✓ {t("order.added")}
+                              </motion.span>
+                            ) : (
+                              <motion.span
+                                key="add"
+                                initial={{ opacity: 0, y: -5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                transition={{ duration: 0.15 }}
+                                className="flex items-center gap-2"
+                              >
+                                <span className="w-6 h-[1px] bg-current transition-all duration-300 group-hover/btn:w-10"></span>{" "}
+                                {t("order.addToOrder")}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
                         </button>
                       </div>
                     </motion.div>

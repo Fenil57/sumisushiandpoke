@@ -4,10 +4,8 @@ import { AlertCircle, X, Phone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "../hooks/useSettings";
 
-// ─── Temporary: set to `true` to disable ordering ─────────────────────────
-// When Flatpay payment integration is complete, set this to `false`
-// (or remove the components entirely).
-export const SERVICE_TEMPORARILY_CLOSED = true;
+// export const SERVICE_TEMPORARILY_CLOSED = true;
+export const SERVICE_TEMPORARILY_CLOSED = false;
 // ───────────────────────────────────────────────────────────────────────────
 
 

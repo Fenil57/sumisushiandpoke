@@ -167,7 +167,7 @@ export function AdminReservations() {
                       </div>
                       <div className="flex flex-col items-end">
                         <span className="text-[10px] tracking-[0.15em] uppercase text-[var(--color-washi)]/25">
-                          #{reservation.id?.slice(-6).toUpperCase()}
+                          #{reservation.id?.slice(-8).toUpperCase()}
                         </span>
                         <span className="text-[10px] text-[var(--color-washi)]/30 mt-1">
                           Requested {formatTimeAgo(reservation.created_at)}

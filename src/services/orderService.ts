@@ -41,10 +41,10 @@ export interface Order {
   status: OrderStatus;
   payment_status: PaymentStatus;
   payment_intent_id?: string;
-  payment_provider?: 'flatpay';
+  payment_provider?: 'stripe';
   payment_reference?: string;
-  flatpay_invoice_handle?: string;
-  flatpay_session_id?: string;
+  stripe_session_id?: string;
+  stripe_payment_intent_id?: string;
   delivery_distance_meters?: number;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -54,7 +54,7 @@ const COLLECTION = 'orders';
 
 /**
  * Legacy client-side helper for unpaid/manual flows.
- * Secure paid orders are now created by the backend after Flatpay verification.
+ * Secure paid orders are now created by the backend after Stripe verification.
  */
 export async function createOrder(
   customerInfo: CustomerInfo,

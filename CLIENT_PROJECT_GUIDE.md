@@ -119,16 +119,128 @@ If email notifications are connected, the restaurant can also receive an email w
 
 ## How Payments Work
 
-Payments are handled through **Flatpay** using a hosted secure checkout page.
+Payments are handled through **Stripe** using a hosted secure checkout page.
+
+Stripe is one of the world's largest and most trusted online payment companies. It supports:
+
+- **Credit and debit cards** (Visa, Mastercard, American Express)
+- **MobilePay** (the most popular mobile payment app in Finland)
+- **Apple Pay** and **Google Pay**
+- **Direct bank payments** (Finnish online banking)
 
 The current setup is designed so that:
 
-- The customer is redirected to Flatpay's secure payment page
+- The customer is redirected to Stripe's secure payment page
 - Card details stay with the payment provider, not inside this website
 - The server verifies the payment before the restaurant order is created
 - A backup webhook also helps ensure paid orders are not lost if the customer closes the page after payment
 
----
+### Step-by-Step: How to Set Up Stripe (Non-Technical Guide)
+
+Follow these steps carefully. You do not need any coding knowledge.
+
+#### Step 1: Create a Stripe Account
+
+1. Open your web browser and go to **https://stripe.com**
+2. Click **"Start now"** (or **"Create account"**)
+3. Enter your **email address** and choose a **password**
+4. Follow the on-screen steps to verify your email
+5. Stripe will ask you to fill in your **business details** (restaurant name, address, bank account for payouts). Complete all of this.
+
+> **Note:** Stripe may take 1–2 business days to verify your account before you can accept real payments. You can still test everything immediately.
+
+#### Step 2: Find Your API Keys
+
+API keys are like passwords that let your website talk to Stripe securely.
+
+1. Log into your Stripe account at **https://dashboard.stripe.com**
+2. In the left sidebar, click **"Developers"**
+3. Click **"API keys"**
+4. You will see two keys:
+   - **Publishable key** — starts with `pk_test_...` or `pk_live_...`. **Ignore this one completely.** It is only used by websites that build their own payment form. Our website redirects to Stripe's own secure page instead, so we do not need it.
+   - **Secret key** — starts with `sk_test_...` or `sk_live_...`. **This is the only key you need.** It lets the website server create payment sessions securely.
+5. Click **"Reveal test key"** to see the full secret key
+6. **Copy** the secret key — you will paste it later
+
+> **Important:** Never share your secret key with anyone publicly. Treat it like a bank password.
+
+#### Step 3: Understand Test Mode vs Live Mode
+
+Stripe gives you **two separate sets of keys** automatically:
+
+| Mode | Key starts with | What it does |
+|------|----------------|--------------|
+| **Test Mode** | `sk_test_...` | For testing. No real money is charged. Use fake card numbers. |
+| **Live Mode** | `sk_live_...` | For real customers. Real money is charged to real cards. |
+
+- At the top of your Stripe Dashboard, you will see a toggle or switch that says **"Test mode"**
+- When the toggle is **ON** (orange), you see test keys
+- When the toggle is **OFF**, you see live keys
+
+**Start with Test Mode** to make sure everything works. Switch to Live Mode only when you are ready to accept real payments.
+
+**Test card number for testing:** Use `4242 4242 4242 4242` with any future expiry date and any 3-digit CVC.
+
+#### Step 4: Set Up the Webhook
+
+A webhook is an automatic notification from Stripe to your website. It makes sure that even if a customer closes their browser after paying, the order still gets saved.
+
+1. In your Stripe Dashboard, click **"Developers"** in the left sidebar
+2. Click **"Webhooks"**
+3. Click the **"Add endpoint"** button
+4. In the **"Endpoint URL"** field, type exactly:
+   ```
+   https://sumisushiandpoke.fi/api/stripe/webhook
+   ```
+5. Under **"Select events to listen to"**, click **"+ Select events"**
+6. Search for **`checkout.session.completed`** and check the box next to it
+7. Click **"Add events"**
+8. Click **"Add endpoint"**
+9. After the endpoint is created, you will see a section called **"Signing secret"**
+10. Click **"Reveal"** to see it — it starts with `whsec_...`
+11. **Copy** this signing secret — you will paste it later
+
+> **Note:** If you are testing, make sure you are in **Test Mode** when creating the webhook. You will need to create a separate webhook for Live Mode later.
+
+#### Step 5: Give the Keys to Your Developer
+
+Send the following two values to your developer (or paste them into the website's settings file yourself if you have access):
+
+1. **STRIPE_SECRET_KEY** — the secret key from Step 2 (starts with `sk_test_...` or `sk_live_...`)
+2. **STRIPE_WEBHOOK_SECRET** — the signing secret from Step 4 (starts with `whsec_...`)
+
+Your developer will paste these into the website's configuration file. That is all that is needed to activate payments.
+
+#### Step 6: Enable MobilePay (Recommended for Finland)
+
+MobilePay is very popular in Finland. To enable it:
+
+1. In your Stripe Dashboard, click **"Settings"** (gear icon)
+2. Click **"Payment methods"**
+3. Find **"MobilePay"** in the list
+4. Click **"Turn on"**
+
+Stripe will automatically show MobilePay as a payment option to Finnish customers.
+
+#### Step 7: Test a Payment
+
+1. Make sure your website is running with the **test** keys
+2. Go to the online ordering page on your website
+3. Add items to the cart and proceed to checkout
+4. On the Stripe payment page, use the test card: **4242 4242 4242 4242**
+5. Use any future expiry date (e.g., 12/30) and any CVC (e.g., 123)
+6. Complete the payment
+7. Check your **admin dashboard** — the order should appear
+8. Check your **Stripe Dashboard** — the payment should appear under "Payments"
+
+If everything works, you are ready to switch to **Live Mode** keys and accept real payments.
+
+#### Quick Summary
+
+| What you need | Where to find it | What it looks like |
+|---------------|------------------|--------------------|
+| Secret Key | Stripe Dashboard → Developers → API Keys | `sk_test_...` or `sk_live_...` |
+| Webhook Secret | Stripe Dashboard → Developers → Webhooks → Your endpoint → Signing secret | `whsec_...` |
 
 ## How the Menu Works
 
@@ -167,7 +279,7 @@ Before the site can go fully live, a developer still needs to connect the busine
 
 - A **Firebase** project
   - This stores menu items, orders, admin users, and site settings.
-- A **Flatpay** merchant account with API access
+- A **Stripe** account with API access
   - This handles online payments.
 - A **secure backend setup**
   - This includes Firebase Admin credentials so only the server can create paid orders.
@@ -230,7 +342,7 @@ This project is already strong as a working restaurant website, but there are a 
 - Branding now uses the **Sumi Sushi and Poke** name and the SVG logo, but final client approval is still recommended.
 - Email notifications are optional and only work after a business email service is connected.
 - Menu image URLs work now. Direct file upload is intentionally visible but disabled until Firebase Storage is enabled on a paid Firebase plan.
-- Flatpay and Firebase Admin credentials still need to be filled in for production before secure live payments can work.
+- Stripe and Firebase Admin credentials still need to be filled in for production before secure live payments can work.
 
 These are normal final-stage polish items, not signs that the project is unusable.
 
@@ -241,7 +353,7 @@ These are normal final-stage polish items, not signs that the project is unusabl
 The restaurant owner should keep these details safe and organized:
 
 - Admin login email and password
-- Flatpay merchant login
+- Stripe merchant login
 - Firebase/project ownership access
 - Hosting/domain login
 - Business email login used for notifications
@@ -256,7 +368,7 @@ If a new developer takes over later, they should receive:
 
 - This whole project folder
 - The hosting login
-- The Flatpay login
+- The Stripe login
 - The Firebase project access
 - The admin login details
 - The domain access

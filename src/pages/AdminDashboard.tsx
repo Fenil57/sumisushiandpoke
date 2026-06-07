@@ -462,7 +462,7 @@ export function AdminDashboard() {
 
                           {/* Order ID */}
                           <div className="text-[10px] tracking-[0.15em] uppercase text-[var(--color-washi)]/25 mb-3">
-                            #{order.id?.slice(-6).toUpperCase()}
+                            #{order.id?.slice(-8).toUpperCase()}
                           </div>
 
                           {/* Customer info */}

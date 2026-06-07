@@ -1,11 +1,13 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import nodemailer from 'nodemailer';
 import rateLimit from 'express-rate-limit';
+import Stripe from 'stripe';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { getAdminDb, getAdminApp, isFirebaseAdminConfigured } from './server/firebaseAdmin.js';
@@ -31,10 +33,7 @@ const PENDING_CHECKOUTS_COLLECTION = 'pending_checkouts';
 const SETTINGS_DOC_PATH = 'settings/general';
 const RESERVATION_TIME_ZONE = 'Europe/Helsinki';
 const RESERVATION_EDIT_CUTOFF_MINUTES = 240;
-const FLATPAY_CHECKOUT_API_BASE_URL = 'https://checkout-api.frisbii.com/v1';
-const FLATPAY_API_BASE_URL = 'https://api.frisbii.com/v1';
-const FLATPAY_FALLBACK_CHECKOUT_URL = 'https://checkout.reepay.com/#/session/';
-const SUCCESSFUL_CHARGE_STATES = new Set(['authorized', 'settled']);
+const STRIPE_PAYMENT_SUCCESS_STATUSES = new Set(['paid', 'no_payment_required']);
 const ORDER_STATUSES = new Set(['pending', 'preparing', 'ready', 'completed', 'cancelled']);
 const RESERVATION_STATUSES = new Set(['pending', 'confirmed', 'cancelled']);
 
@@ -102,6 +101,7 @@ interface MenuItemRecord {
   name?: string;
   price?: number;
   is_available?: boolean;
+  image_url?: string;
   variations?: {
     id?: string;
     label?: string;
@@ -136,12 +136,13 @@ interface OrderItemSnapshot {
   name: string;
   price: number;
   quantity: number;
+  image_url?: string;
 }
 
 interface PendingCheckoutRecord {
   handle: string;
   status: PendingCheckoutStatus;
-  payment_provider: 'flatpay';
+  payment_provider: 'stripe';
   payment_status: PaymentStatus;
   customer_info: {
     name: string;
@@ -156,10 +157,10 @@ interface PendingCheckoutRecord {
   total_amount: number;
   order_type: OrderType;
   delivery_distance_meters?: number;
-  flatpay_session_id?: string;
-  flatpay_checkout_url?: string;
-  flatpay_charge_state?: string;
-  flatpay_invoice_handle?: string;
+  stripe_session_id?: string;
+  stripe_checkout_url?: string;
+  stripe_payment_status?: string;
+  stripe_payment_intent_id?: string;
   payment_reference?: string;
   final_order_id?: string;
   last_error?: string;
@@ -176,17 +177,6 @@ interface ValidatedCheckout {
   total: number;
   deliveryDistanceMeters?: number;
   restaurantAddress: string;
-}
-
-interface FlatpaySessionResponse {
-  id?: string;
-  url?: string;
-}
-
-interface FlatpayChargeResponse {
-  handle?: string;
-  state?: string;
-  transaction?: string;
 }
 
 interface CheckoutSyncResult {
@@ -343,20 +333,16 @@ async function requireAdminAuth(req: express.Request, res: express.Response, nex
   }
 }
 
-function getFlatpayApiKey(): string {
-  const apiKey = process.env.FLATPAY_PRIVATE_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error('Flatpay private API key is not configured.');
+function getStripeInstance(): Stripe {
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!secretKey) {
+    throw new Error('Stripe secret key is not configured.');
   }
-  return apiKey;
+  return new Stripe(secretKey);
 }
 
 function createBasicAuthorizationHeader(secret: string): string {
   return `Basic ${Buffer.from(`${secret}:`).toString('base64')}`;
-}
-
-function getFlatpayAuthorizationHeader(): string {
-  return createBasicAuthorizationHeader(getFlatpayApiKey());
 }
 
 function createNlsAuthorizationHeader(apiKey: string): string {
@@ -387,6 +373,15 @@ function getPublicAppBaseUrl(req: express.Request): string {
 function getAdminDashboardUrl(req?: express.Request): string {
   const baseUrl = req ? getPublicAppBaseUrl(req) : process.env.APP_BASE_URL?.trim() || 'http://localhost:3000';
   return `${baseUrl.replace(/\/+$/, '')}/admin`;
+}
+
+function logEmailDebug(message: string) {
+  const logMsg = `[${new Date().toISOString()}] ${message}\n`;
+  try {
+    fs.appendFileSync(path.join(__dirname, 'email_debug.log'), logMsg);
+  } catch (err) {
+    console.error('Failed to write to email_debug.log:', err);
+  }
 }
 
 function splitCustomerName(name: string) {
@@ -1015,6 +1010,7 @@ async function validateCheckoutPayload(payload: {
       name: variationLabel ? `${menuRecord.name || item.menu_item_id} (${variationLabel})` : menuRecord.name || item.menu_item_id,
       price,
       quantity: item.quantity,
+      image_url: menuRecord.image_url || undefined,
     };
   });
 
@@ -1137,96 +1133,64 @@ async function createUnpaidOrder(
   return { orderId: orderRef.id };
 }
 
-async function createFlatpayChargeSession(params: {
+async function createStripeCheckoutSession(params: {
   handle: string;
   req: express.Request;
   checkout: ValidatedCheckout;
 }) {
   const { handle, req, checkout } = params;
-  const { firstName, lastName } = splitCustomerName(checkout.customerInfo.name);
+  const stripe = getStripeInstance();
   const baseUrl = getPublicAppBaseUrl(req);
 
-  const response = await fetch(`${FLATPAY_CHECKOUT_API_BASE_URL}/session/charge`, {
-    method: 'POST',
-    headers: {
-      Authorization: getFlatpayAuthorizationHeader(),
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      order: {
-        handle,
-        amount: toCents(checkout.total),
-        currency: 'EUR',
-        ordertext: buildOrderText(checkout.items),
-        customer: {
-          handle: `guest-${handle}`,
-          first_name: firstName,
-          last_name: lastName || undefined,
-          email: checkout.customerInfo.email || undefined,
-          phone: checkout.customerInfo.phone,
-        },
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = checkout.items.map((item) => ({
+    price_data: {
+      currency: 'eur',
+      product_data: {
+        name: item.name,
+        description: item.variation_label || undefined,
+        images: item.image_url ? [item.image_url] : undefined,
       },
-      accept_url: `${baseUrl}/cart?invoice=${handle}&flatpay=success`,
-      cancel_url: `${baseUrl}/cart?flatpay=cancelled`,
-    }),
-  });
+      unit_amount: toCents(item.price),
+    },
+    quantity: item.quantity,
+  }));
 
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data?.error || data?.message || 'Flatpay rejected the checkout session.');
+  // Add delivery fee as a separate line item if applicable
+  if (checkout.deliveryFee > 0) {
+    lineItems.push({
+      price_data: {
+        currency: 'eur',
+        product_data: {
+          name: 'Delivery Fee',
+        },
+        unit_amount: toCents(checkout.deliveryFee),
+      },
+      quantity: 1,
+    });
   }
 
-  const session = data as FlatpaySessionResponse;
-  if (!session.id) {
-    throw new Error('Flatpay did not return a checkout session id.');
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    line_items: lineItems,
+    customer_email: checkout.customerInfo.email || undefined,
+    metadata: {
+      checkout_handle: handle,
+      customer_name: checkout.customerInfo.name,
+      customer_phone: checkout.customerInfo.phone,
+      order_type: checkout.orderType,
+    },
+    success_url: `${baseUrl}/cart?session_id={CHECKOUT_SESSION_ID}&stripe=success`,
+    cancel_url: `${baseUrl}/cart?stripe=cancelled`,
+  });
+
+  if (!session.id || !session.url) {
+    throw new Error('Stripe did not return a checkout session.');
   }
 
   return {
     sessionId: session.id,
-    checkoutUrl: session.url || `${FLATPAY_FALLBACK_CHECKOUT_URL}${session.id}`,
+    checkoutUrl: session.url,
   };
-}
-
-async function getFlatpayCharge(handle: string): Promise<FlatpayChargeResponse> {
-  const response = await fetch(
-    `${FLATPAY_API_BASE_URL}/charge/${encodeURIComponent(handle)}`,
-    {
-      headers: {
-        Authorization: getFlatpayAuthorizationHeader(),
-        Accept: 'application/json',
-      },
-    },
-  );
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data?.error || data?.message || 'Flatpay charge lookup failed.');
-  }
-
-  return data as FlatpayChargeResponse;
-}
-
-async function settleFlatpayCharge(handle: string): Promise<FlatpayChargeResponse> {
-  const response = await fetch(
-    `${FLATPAY_API_BASE_URL}/charge/${encodeURIComponent(handle)}/settle`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: getFlatpayAuthorizationHeader(),
-        Accept: 'application/json',
-      },
-    },
-  );
-
-  if (!response.ok && response.status !== 409) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data?.error || data?.message || 'Flatpay charge settlement failed.');
-  }
-
-  return getFlatpayCharge(handle);
 }
 
 let emailTransporter: nodemailer.Transporter | null = null;
@@ -1251,9 +1215,13 @@ function initEmailTransporter() {
 
   emailTransporter
     .verify()
-    .then(() => console.log('   Email notifications enabled'))
+    .then(() => {
+      console.log('   Email notifications enabled');
+      logEmailDebug('Email notifications enabled (transporter verified successfully)');
+    })
     .catch((err) => {
       console.error('   Email transporter verification failed:', err.message);
+      logEmailDebug(`Email transporter verification failed: ${err.message}`);
       emailTransporter = null;
     });
 }
@@ -1398,9 +1366,9 @@ async function sendOrderConfirmationEmail(
 
   const html = `
     <div style="max-width:500px;margin:0 auto;background:#1a1a1a;color:#e8e0d4;font-family:Georgia,serif;padding:0;border:1px solid #333;">
-      <div style="background:#c23b22;padding:40px 24px;text-align:center;">
-        <h1 style="margin:0;font-size:24px;letter-spacing:4px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
-        <p style="margin:8px 0 0;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">Order Receipt</p>
+      <div style="background:#c23b22;padding:24px 24px;text-align:center;">
+        <h1 style="margin:0;font-size:20px;letter-spacing:3px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
+        <p style="margin:6px 0 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">Order Receipt</p>
       </div>
 
       <div style="padding:40px 32px;">
@@ -1466,9 +1434,9 @@ async function sendOrderCancellationEmail(
 
   const html = `
     <div style="max-width:500px;margin:0 auto;background:#1a1a1a;color:#e8e0d4;font-family:Georgia,serif;padding:0;border:1px solid #333;">
-      <div style="background:#c23b22;padding:40px 24px;text-align:center;">
-        <h1 style="margin:0;font-size:24px;letter-spacing:4px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
-        <p style="margin:8px 0 0;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">Order Cancelled</p>
+      <div style="background:#c23b22;padding:24px 24px;text-align:center;">
+        <h1 style="margin:0;font-size:20px;letter-spacing:3px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
+        <p style="margin:6px 0 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">Order Cancelled</p>
       </div>
 
       <div style="padding:40px 32px;">
@@ -1489,6 +1457,72 @@ async function sendOrderCancellationEmail(
     subject: `Order Cancelled - ${restaurantName} (#${order.orderId.slice(-8).toUpperCase()})`,
     html,
   });
+}
+
+async function sendOrderReadyEmail(
+  order: {
+    orderId: string;
+    customerName: string;
+    customerEmail: string;
+    orderType: string;
+    customerAddress?: string;
+  },
+  settings?: any,
+) {
+  logEmailDebug(`sendOrderReadyEmail called for Order #${order.orderId}. Customer Email: ${order.customerEmail}. Transporter state: ${emailTransporter ? 'available' : 'null'}`);
+
+  if (!emailTransporter || !order.customerEmail) {
+    logEmailDebug(`sendOrderReadyEmail aborted: transporter is ${emailTransporter ? 'available' : 'null'}, customerEmail is ${order.customerEmail || 'missing'}`);
+    return;
+  }
+
+  const restaurantName = settings?.restaurantName || 'Sumi Sushi and Poke';
+  const contactPhone = settings?.contactPhone || '044 2479393';
+  const address = settings?.address || 'Kuskinkatu 3, 20780 Kaarina';
+  const orderIdAbbr = order.orderId.slice(-8).toUpperCase();
+
+  const isDelivery = order.orderType === 'delivery';
+  const statusLabel = isDelivery ? 'Out for Delivery' : 'Ready for Pickup';
+  const subject = isDelivery 
+    ? `Your order is on the way! - ${restaurantName} (#${orderIdAbbr})`
+    : `Your order is ready for pickup! - ${restaurantName} (#${orderIdAbbr})`;
+
+  const body = isDelivery
+    ? `Great news! Your order #${orderIdAbbr} is on its way. Our courier has picked it up and is heading to your address:<br/><br/><strong style="color:#e8e0d4;">${escapeHtml(order.customerAddress || '')}</strong>.`
+    : `Great news! Your order #${orderIdAbbr} is ready for pickup. Come grab it while it's fresh and hot! You can collect it at:<br/><br/><strong style="color:#e8e0d4;">${escapeHtml(address.replace(/\n/g, ', '))}</strong>.`;
+
+  const html = `
+    <div style="max-width:500px;margin:0 auto;background:#1a1a1a;color:#e8e0d4;font-family:Georgia,serif;padding:0;border:1px solid #333;">
+      <div style="background:#c23b22;padding:24px 24px;text-align:center;">
+        <h1 style="margin:0;font-size:20px;letter-spacing:3px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
+        <p style="margin:6px 0 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">${statusLabel}</p>
+      </div>
+
+      <div style="padding:40px 32px;">
+        <p style="font-size:18px;margin-bottom:24px;">Hello ${order.customerName},</p>
+        <p style="line-height:1.6;color:#ccc;margin-bottom:32px;">
+          ${body}
+        </p>
+        <p style="font-size:13px;color:#888;line-height:1.6;text-align:center;border-top:1px solid #333;padding-top:20px;margin-bottom:0;">
+          If you have any questions or need to reach us, please call ${contactPhone}.
+        </p>
+      </div>
+    </div>
+  `;
+
+  logEmailDebug(`Attempting to send mail to: ${order.customerEmail}`);
+  try {
+    const info = await emailTransporter.sendMail({
+      from: `"${restaurantName}" <${process.env.SMTP_USER}>`,
+      to: order.customerEmail,
+      subject,
+      html,
+    });
+    logEmailDebug(`✅ Email sent successfully to ${order.customerEmail}. Message ID: ${info.messageId}`);
+  } catch (err: any) {
+    logEmailDebug(`❌ Error sending mail to ${order.customerEmail}: ${err.message}`);
+    throw err;
+  }
 }
 
 function buildReservationStatusLabel(status?: ReservationStatus): string {
@@ -1602,9 +1636,9 @@ async function sendReservationConfirmationEmail(
 
   const html = `
     <div style="max-width:500px;margin:0 auto;background:#1a1a1a;color:#e8e0d4;font-family:Georgia,serif;padding:0;border:1px solid #333;">
-      <div style="background:#c23b22;padding:40px 24px;text-align:center;">
-        <h1 style="margin:0;font-size:24px;letter-spacing:4px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
-        <p style="margin:8px 0 0;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">${title}</p>
+      <div style="background:#c23b22;padding:24px 24px;text-align:center;">
+        <h1 style="margin:0;font-size:20px;letter-spacing:3px;color:#e8e0d4;text-transform:uppercase;">${restaurantName}</h1>
+        <p style="margin:6px 0 0;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#e8e0d4;opacity:0.8;">${title}</p>
       </div>
 
       <div style="padding:40px 32px;">
@@ -1644,8 +1678,9 @@ async function sendReservationConfirmationEmail(
   });
 }
 
-async function syncCheckoutFromFlatpay(
+async function syncCheckoutFromStripe(
   handle: string,
+  stripeSessionId?: string,
   req?: express.Request,
 ): Promise<CheckoutSyncResult> {
   const db = requireAdminDb();
@@ -1661,43 +1696,40 @@ async function syncCheckoutFromFlatpay(
     return {
       outcome: 'paid',
       orderId: pendingCheckout.final_order_id,
-      paymentState: pendingCheckout.flatpay_charge_state,
+      paymentState: pendingCheckout.stripe_payment_status,
     };
   }
 
-  let charge = await getFlatpayCharge(handle);
-  let paymentState = charge.state || 'unknown';
-
-  if (paymentState === 'authorized') {
-    try {
-      charge = await settleFlatpayCharge(handle);
-      paymentState = charge.state || paymentState;
-    } catch (error: any) {
-      console.warn(`Flatpay settlement attempt failed for ${handle}: ${error.message}`);
-    }
+  // Retrieve the Stripe session to check its payment status
+  const sessionId = stripeSessionId || pendingCheckout.stripe_session_id;
+  if (!sessionId) {
+    return { outcome: 'missing_payment', paymentState: 'no_session' };
   }
 
-  if (!SUCCESSFUL_CHARGE_STATES.has(paymentState)) {
+  const stripe = getStripeInstance();
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  const paymentState = session.payment_status || 'unknown';
+  const paymentIntentId = typeof session.payment_intent === 'string'
+    ? session.payment_intent
+    : session.payment_intent?.id;
+
+  if (!STRIPE_PAYMENT_SUCCESS_STATUSES.has(paymentState)) {
     const nextStatus: PendingCheckoutStatus =
-      paymentState === 'cancelled' ? 'cancelled' : paymentState === 'failed' ? 'failed' : 'payment_pending';
+      session.status === 'expired' ? 'cancelled' : 'payment_pending';
 
     await pendingRef.set(
       {
         status: nextStatus,
         payment_status: 'unpaid',
-        flatpay_charge_state: paymentState,
-        payment_reference: charge.transaction || pendingCheckout.payment_reference || undefined,
+        stripe_payment_status: paymentState,
+        stripe_payment_intent_id: paymentIntentId || undefined,
         updated_at: Timestamp.now(),
       },
       { merge: true },
     );
 
-    if (paymentState === 'cancelled') {
+    if (session.status === 'expired') {
       return { outcome: 'cancelled', paymentState };
-    }
-
-    if (paymentState === 'failed') {
-      return { outcome: 'failed', paymentState };
     }
 
     return { outcome: 'pending', paymentState };
@@ -1738,10 +1770,10 @@ async function syncCheckoutFromFlatpay(
       order_type: latestCheckout.order_type,
       status: 'pending',
       payment_status: 'paid',
-      payment_provider: 'flatpay',
-      payment_reference: charge.transaction || handle,
-      flatpay_invoice_handle: handle,
-      flatpay_session_id: latestCheckout.flatpay_session_id || undefined,
+      payment_provider: 'stripe',
+      payment_reference: paymentIntentId || handle,
+      stripe_session_id: sessionId,
+      stripe_payment_intent_id: paymentIntentId || undefined,
       delivery_distance_meters: latestCheckout.delivery_distance_meters,
       created_at: Timestamp.now(),
       updated_at: Timestamp.now(),
@@ -1752,9 +1784,9 @@ async function syncCheckoutFromFlatpay(
       {
         status: 'paid',
         payment_status: 'paid',
-        flatpay_charge_state: paymentState,
-        flatpay_invoice_handle: handle,
-        payment_reference: charge.transaction || handle,
+        stripe_payment_status: paymentState,
+        stripe_payment_intent_id: paymentIntentId || undefined,
+        payment_reference: paymentIntentId || handle,
         final_order_id: orderRef.id,
         updated_at: Timestamp.now(),
       },
@@ -1814,36 +1846,10 @@ async function syncCheckoutFromFlatpay(
   };
 }
 
-function isFlatpayWebhookAuthenticated(req: express.Request): boolean {
-  const expectedUsername = process.env.FLATPAY_WEBHOOK_USERNAME?.trim();
-  const expectedPassword = process.env.FLATPAY_WEBHOOK_PASSWORD?.trim();
-
-  if (!expectedUsername || !expectedPassword) {
-    return false;
-  }
-
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Basic ')) {
-    return false;
-  }
-
-  const encoded = header.slice('Basic '.length).trim();
-  const decoded = Buffer.from(encoded, 'base64').toString('utf8');
-  const separatorIndex = decoded.indexOf(':');
-  if (separatorIndex === -1) {
-    return false;
-  }
-
-  const username = decoded.slice(0, separatorIndex);
-  const password = decoded.slice(separatorIndex + 1);
-
-  return secureCompare(username, expectedUsername) && secureCompare(password, expectedPassword);
-}
-
-app.post('/api/flatpay/session', checkoutLimiter, async (req, res) => {
+app.post('/api/stripe/session', checkoutLimiter, async (req, res) => {
   try {
     requireAdminDb();
-    getFlatpayApiKey();
+    getStripeInstance();
 
     const checkout = await validateCheckoutPayload(req.body || {});
     const checkoutHandle = createCheckoutHandle();
@@ -1854,7 +1860,7 @@ app.post('/api/flatpay/session', checkoutLimiter, async (req, res) => {
     await pendingRef.set({
       handle: checkoutHandle,
       status: 'creating_session',
-      payment_provider: 'flatpay',
+      payment_provider: 'stripe',
       payment_status: 'unpaid',
       customer_info: checkout.customerInfo,
       items: checkout.items,
@@ -1867,7 +1873,7 @@ app.post('/api/flatpay/session', checkoutLimiter, async (req, res) => {
       updated_at: now,
     } satisfies PendingCheckoutRecord);
 
-    const session = await createFlatpayChargeSession({
+    const session = await createStripeCheckoutSession({
       handle: checkoutHandle,
       req,
       checkout,
@@ -1876,9 +1882,8 @@ app.post('/api/flatpay/session', checkoutLimiter, async (req, res) => {
     await pendingRef.set(
       {
         status: 'payment_pending',
-        flatpay_session_id: session.sessionId,
-        flatpay_checkout_url: session.checkoutUrl,
-        flatpay_invoice_handle: checkoutHandle,
+        stripe_session_id: session.sessionId,
+        stripe_checkout_url: session.checkoutUrl,
         updated_at: Timestamp.now(),
       },
       { merge: true },
@@ -1891,10 +1896,10 @@ app.post('/api/flatpay/session', checkoutLimiter, async (req, res) => {
       amount: checkout.total,
       subtotal: checkout.subtotal,
       deliveryFee: checkout.deliveryFee,
-      paymentProvider: 'flatpay',
+      paymentProvider: 'stripe',
     });
   } catch (error: any) {
-    console.error('Error creating Flatpay checkout session:', error.message);
+    console.error('Error creating Stripe checkout session:', error.message);
     res.status(500).json({
       error:
         error.message || 'We could not initialize secure payment. Please try again.',
@@ -1925,40 +1930,69 @@ app.post('/api/orders/manual', requireAdminAuth, checkoutLimiter, async (req, re
   }
 });
 
-app.get('/api/flatpay/verify', async (req, res) => {
+app.get('/api/stripe/verify', async (req, res) => {
   try {
-    const handle = sanitizeString(req.query.invoice || req.query.handle);
-    if (!handle) {
-      return res.status(400).json({ error: 'Missing Flatpay invoice handle.' });
+    const sessionId = sanitizeString(req.query.session_id);
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Missing Stripe session ID.' });
     }
 
-    const result = await syncCheckoutFromFlatpay(handle, req);
+    // Look up the pending checkout by Stripe session ID
+    const stripe = getStripeInstance();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const handle = (session.metadata?.checkout_handle || '').trim();
+
+    if (!handle) {
+      return res.status(400).json({ error: 'Could not find the associated order.' });
+    }
+
+    const result = await syncCheckoutFromStripe(handle, sessionId, req);
     res.json(result);
   } catch (error: any) {
-    console.error('Error verifying Flatpay checkout:', error.message);
+    console.error('Error verifying Stripe checkout:', error.message);
     res.status(500).json({
       error: error.message || 'We could not verify the payment status.',
     });
   }
 });
 
-app.post('/api/flatpay/webhook', async (req, res) => {
+// Stripe webhook requires raw body for signature verification.
+// We register this BEFORE the global JSON body parser (or use express.raw here).
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+
+  if (!webhookSecret) {
+    console.warn('Stripe webhook secret is not configured. Ignoring webhook.');
+    return res.status(400).json({ error: 'Webhook secret not configured.' });
+  }
+
+  const signature = req.headers['stripe-signature'] as string;
+  if (!signature) {
+    return res.status(400).json({ error: 'Missing stripe-signature header.' });
+  }
+
+  let event: Stripe.Event;
   try {
-    if (!isFlatpayWebhookAuthenticated(req)) {
-      return res.status(401).json({ error: 'Unauthorized webhook request.' });
+    const stripe = getStripeInstance();
+    event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
+  } catch (err: any) {
+    console.error('Stripe webhook signature verification failed:', err.message);
+    return res.status(400).json({ error: 'Invalid webhook signature.' });
+  }
+
+  try {
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const handle = (session.metadata?.checkout_handle || '').trim();
+
+      if (handle) {
+        await syncCheckoutFromStripe(handle, session.id);
+      }
     }
 
-    const eventType = sanitizeString(req.body?.event_type);
-    const handle = sanitizeString(req.body?.invoice);
-
-    if (!eventType.startsWith('invoice_') || !handle) {
-      return res.json({ received: true, ignored: true });
-    }
-
-    await syncCheckoutFromFlatpay(handle);
     res.json({ received: true });
   } catch (error: any) {
-    console.error('Flatpay webhook error:', error.message);
+    console.error('Stripe webhook processing error:', error.message);
     res.status(500).json({ error: error.message || 'Webhook processing failed.' });
   }
 });
@@ -2391,6 +2425,26 @@ app.patch('/api/admin/orders/:orderId/status', requireAdminAuth, async (req, res
       ).catch((err) => console.error('Failed to send order cancellation email:', err.message));
     }
 
+    if (status === 'ready') {
+      logEmailDebug(`PATCH status updated to 'ready' for order ${orderId}. Fetching settings...`);
+      const settings = await fetchSiteSettings();
+      await sendOrderReadyEmail(
+        {
+          orderId,
+          customerName: orderData?.customer_info?.name || 'Guest',
+          customerEmail: orderData?.customer_info?.email,
+          orderType: orderData?.order_type || 'pickup',
+          customerAddress: orderData?.customer_info?.address || '',
+        },
+        settings,
+      ).then(() => {
+        logEmailDebug(`Finished sendOrderReadyEmail execution for order ${orderId}`);
+      }).catch((err) => {
+        logEmailDebug(`Failed inside PATCH route handler for sendOrderReadyEmail: ${err.message}`);
+        console.error('Failed to send order ready email:', err.message);
+      });
+    }
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error updating order status:', error.message);
@@ -2476,10 +2530,9 @@ app.get('/api/health', (_req, res) => {
     ...(process.env.NODE_ENV !== 'production' && {
       checks: {
         firebaseAdminConfigured: isFirebaseAdminConfigured(),
-        flatpayConfigured: Boolean(process.env.FLATPAY_PRIVATE_API_KEY?.trim()),
-        flatpayWebhookAuthConfigured: Boolean(
-          process.env.FLATPAY_WEBHOOK_USERNAME?.trim() &&
-            process.env.FLATPAY_WEBHOOK_PASSWORD?.trim(),
+        stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
+        stripeWebhookConfigured: Boolean(
+          process.env.STRIPE_WEBHOOK_SECRET?.trim(),
         ),
         smtpConfigured: Boolean(
           process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
@@ -2530,9 +2583,8 @@ const REQUIRED_ENV_VARS = [
 ];
 
 const OPTIONAL_ENV_WARNINGS = [
-  { key: 'FLATPAY_PRIVATE_API_KEY', label: 'Flatpay payments' },
-  { key: 'FLATPAY_WEBHOOK_USERNAME', label: 'Flatpay webhook auth' },
-  { key: 'FLATPAY_WEBHOOK_PASSWORD', label: 'Flatpay webhook auth' },
+  { key: 'STRIPE_SECRET_KEY', label: 'Stripe payments' },
+  { key: 'STRIPE_WEBHOOK_SECRET', label: 'Stripe webhook' },
   { key: 'SMTP_HOST', label: 'Email notifications' },
   { key: 'SMTP_USER', label: 'Email notifications' },
   { key: 'SMTP_PASS', label: 'Email notifications' },
