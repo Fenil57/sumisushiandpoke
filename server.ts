@@ -78,7 +78,7 @@ const geocodingLimiter = rateLimit({
 // 5 sessions per 15 minutes per IP
 const checkoutLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  max: process.env.NODE_ENV === 'production' ? 5 : 100,
   message: { 
     error: 'Too many checkout attempts. Please wait before trying again.',
     retryAfter: '15 minutes'
@@ -798,11 +798,37 @@ async function geocodeFinnishAddress(address: string): Promise<{
   coordinates: [number, number];
   label: string;
 } | null> {
+  // Clean address to remove staircase/flat numbers (e.g. "yo-kylä 23a, 22" -> "yo-kylä 23a")
+  const parts = address
+    .split(/[,\n]+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const cleanedParts = parts.filter((part) => {
+    const p = part.toLowerCase();
+    if (/^\d{5}$/.test(p)) return true;
+    if (/^\d+$/.test(p)) return false;
+    if (/^[a-h]\s*\d+$/i.test(p) || /^(as|asunto|apt|apartment|fl|flat)\s*\d+$/i.test(p)) {
+      return false;
+    }
+    return true;
+  });
+
+  let cleanedAddress = cleanedParts.join(', ');
+  cleanedAddress = cleanedAddress
+    .replace(/\b[A-H]\s*\d+\b/gi, '') // Removes "A 22", "B 4"
+    .replace(/\b(as|asunto|apt|apartment|fl|flat)\s*\d+\b/gi, '') // Removes "as 22"
+    .replace(/\b(\d+[a-zA-Z]?)-\d+\b/g, '$1') // Removes hyphenated apartments "3a-7" -> "3a"
+    .replace(/\s+/g, ' ')
+    .replace(/\s*,\s*/g, ', ')
+    .trim();
+  cleanedAddress = cleanedAddress.replace(/^,|,$/g, '').trim();
+
   // Nominatim uses lat/lon (WGS84), not EPSG:3067
   const url = new URL('https://nominatim.openstreetmap.org/search');
   
   url.searchParams.set('format', 'json');
-  url.searchParams.set('q', address);
+  url.searchParams.set('q', cleanedAddress);
   url.searchParams.set('limit', '1');
   url.searchParams.set('addressdetails', '1');
   url.searchParams.set('countrycodes', 'fi'); // Restrict to Finland for better accuracy
@@ -811,7 +837,7 @@ async function geocodeFinnishAddress(address: string): Promise<{
   const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
   try {
-    console.log(`[Geocoding] Nominatim: "${address.replace(/\n/g, ', ')}"`);
+    console.log(`[Geocoding] Nominatim: "${address.replace(/\n/g, ', ')}" ➔ "${cleanedAddress}"`);
     const response = await fetch(url.toString(), {
       signal: controller.signal as any,
       headers: { 
@@ -1027,6 +1053,10 @@ async function validateCheckoutPayload(payload: {
       geocodeFinnishAddress(customerAddress),
       getRestaurantGeocode(restaurantAddress),
     ]);
+
+    if (!customerLocation || !restaurantLocation) {
+      throw new Error('We could not verify your delivery address. Please check the spelling or add a city/postal code.');
+    }
 
     deliveryDistanceMeters = getDistanceMeters(
       customerLocation.coordinates,
