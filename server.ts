@@ -756,26 +756,7 @@ function addressesMatch(address1: string, address2: string): boolean {
   const norm2 = normalizeAddress(address2);
   
   // Exact match after normalization
-  if (norm1 === norm2) {
-    return true;
-  }
-  
-  // Check if one contains the other (handles partial matches)
-  if (norm1.includes(norm2) || norm2.includes(norm1)) {
-    return true;
-  }
-  
-  // Compare key components: postal code and street number
-  const postalCode1 = norm1.match(/\b\d{4,5}\b/)?.[0];
-  const postalCode2 = norm2.match(/\b\d{4,5}\b/)?.[0];
-  const streetNum1 = norm1.match(/\b\d+[a-zA-Z]?\b/)?.[0];
-  const streetNum2 = norm2.match(/\b\d+[a-zA-Z]?\b/)?.[0];
-  
-  if (postalCode1 && postalCode2 && streetNum1 && streetNum2) {
-    return postalCode1 === postalCode2 && streetNum1 === streetNum2;
-  }
-  
-  return false;
+  return norm1 === norm2;
 }
 
 function normalizeDeliveryFee(value: unknown): number {
@@ -1048,21 +1029,27 @@ async function validateCheckoutPayload(payload: {
   let matchedCustomerAddress: string | undefined;
 
   if (orderType === 'delivery') {
-    // Use cached restaurant geocode to avoid redundant Nominatim calls
-    const [customerLocation, restaurantLocation] = await Promise.all([
-      geocodeFinnishAddress(customerAddress),
-      getRestaurantGeocode(restaurantAddress),
-    ]);
+    if (addressesMatch(customerAddress, restaurantAddress)) {
+      console.log('[Checkout] Addresses match - setting distance to 0 (free delivery)');
+      deliveryDistanceMeters = 0;
+      matchedCustomerAddress = customerAddress;
+    } else {
+      // Use cached restaurant geocode to avoid redundant Nominatim calls
+      const [customerLocation, restaurantLocation] = await Promise.all([
+        geocodeFinnishAddress(customerAddress),
+        getRestaurantGeocode(restaurantAddress),
+      ]);
 
-    if (!customerLocation || !restaurantLocation) {
-      throw new Error('We could not verify your delivery address. Please check the spelling or add a city/postal code.');
+      if (!customerLocation || !restaurantLocation) {
+        throw new Error('We could not verify your delivery address. Please check the spelling or add a city/postal code.');
+      }
+
+      deliveryDistanceMeters = getDistanceMeters(
+        customerLocation.coordinates,
+        restaurantLocation.coordinates,
+      );
+      matchedCustomerAddress = customerLocation.label;
     }
-
-    deliveryDistanceMeters = getDistanceMeters(
-      customerLocation.coordinates,
-      restaurantLocation.coordinates,
-    );
-    matchedCustomerAddress = customerLocation.label;
   }
 
   const isWithinFreeRadius =
@@ -1172,18 +1159,31 @@ async function createStripeCheckoutSession(params: {
   const stripe = getStripeInstance();
   const baseUrl = getPublicAppBaseUrl(req);
 
-  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = checkout.items.map((item) => ({
-    price_data: {
-      currency: 'eur',
-      product_data: {
-        name: item.name,
-        description: item.variation_label || undefined,
-        images: item.image_url ? [item.image_url] : undefined,
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = checkout.items.map((item) => {
+    let images: string[] | undefined = undefined;
+    if (item.image_url) {
+      let absoluteUrl = item.image_url.trim();
+      if (!absoluteUrl.startsWith('http://') && !absoluteUrl.startsWith('https://')) {
+        absoluteUrl = `${baseUrl.replace(/\/+$/, '')}/${absoluteUrl.replace(/^\/+/, '')}`;
+      }
+      if (absoluteUrl.startsWith('http') && !absoluteUrl.includes('localhost') && !absoluteUrl.includes('127.0.0.1')) {
+        images = [absoluteUrl];
+      }
+    }
+
+    return {
+      price_data: {
+        currency: 'eur',
+        product_data: {
+          name: item.name,
+          description: item.variation_label || undefined,
+          images,
+        },
+        unit_amount: toCents(item.price),
       },
-      unit_amount: toCents(item.price),
-    },
-    quantity: item.quantity,
-  }));
+      quantity: item.quantity,
+    };
+  });
 
   // Add delivery fee as a separate line item if applicable
   if (checkout.deliveryFee > 0) {
@@ -2061,32 +2061,29 @@ app.post('/api/validate-delivery-address', geocodingLimiter, async (req, res) =>
       geocodeFinnishAddress(restaurantAddress),
     ]);
 
-    let distanceMeters = 6000;
-    let isFallback = false;
-
-    if (customerLocation && restaurantLocation) {
-      distanceMeters = getDistanceMeters(
-        customerLocation.coordinates,
-        restaurantLocation.coordinates,
-      );
-    } else {
-      console.warn('[Geocoding] Using fallback distance (6km) due to geocoding failure.');
-      isFallback = true;
+    if (!customerLocation || !restaurantLocation) {
+      return res.status(400).json({
+        error: 'We could not verify your delivery address. Please check the spelling or add a city/postal code.'
+      });
     }
+
+    const distanceMeters = getDistanceMeters(
+      customerLocation.coordinates,
+      restaurantLocation.coordinates,
+    );
 
     res.json({
       distanceMeters,
       withinFreeDeliveryRadius: distanceMeters <= FREE_DELIVERY_RADIUS_METERS,
       freeDeliveryRadiusMeters: FREE_DELIVERY_RADIUS_METERS,
-      matchedCustomerAddress: customerLocation?.label || customerAddress,
-      matchedRestaurantAddress: restaurantLocation?.label || restaurantAddress,
-      isFallback
+      matchedCustomerAddress: customerLocation.label,
+      matchedRestaurantAddress: restaurantLocation.label,
+      isFallback: false
     });
   } catch (error: any) {
     console.error('Error in validation endpoint:', error.message);
-    res.status(500).json({
-      error: 'We encountered an error while validating the address, but you can still proceed with the default fee.',
-      isFallback: true
+    res.status(400).json({
+      error: error.message || 'We could not verify your delivery address. Please check the spelling or add a city/postal code.'
     });
   }
 });

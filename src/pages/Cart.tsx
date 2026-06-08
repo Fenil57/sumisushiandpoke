@@ -985,6 +985,7 @@ export function Cart() {
                               ...prev,
                               delivery: "",
                             }));
+                          setDeliveryAddressError(null);
                         }}
                         required={orderType === "delivery"}
                         placeholder={t("checkout.deliveryAddressPlaceholder")}
