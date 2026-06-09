@@ -238,17 +238,22 @@ function isAllowedOrigin(origin: string): boolean {
   try {
     const parsed = new URL(origin);
 
+    const parsedHostname = parsed.hostname.replace(/^www\./, '');
     if (
-      (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
+      (parsedHostname === 'localhost' || parsedHostname === '127.0.0.1') &&
       ['http:', 'https:'].includes(parsed.protocol)
     ) {
+      return true;
+    }
+
+    // Default production domain fallback
+    if (parsedHostname === 'sumisushiandpoke.fi') {
       return true;
     }
 
     const configuredBaseUrl = process.env.APP_BASE_URL?.trim();
     if (configuredBaseUrl) {
       const configuredHostname = new URL(configuredBaseUrl).hostname.replace(/^www\./, '');
-      const parsedHostname = parsed.hostname.replace(/^www\./, '');
       if (parsedHostname === configuredHostname) {
         return true;
       }
@@ -350,24 +355,34 @@ function createNlsAuthorizationHeader(apiKey: string): string {
 }
 
 function getPublicAppBaseUrl(req: express.Request): string {
-  const configuredBaseUrl = process.env.APP_BASE_URL?.trim();
-  if (configuredBaseUrl) {
-    return configuredBaseUrl.replace(/\/+$/, '');
-  }
+  let baseUrl = process.env.APP_BASE_URL?.trim();
 
-  if (typeof req.headers.origin === 'string' && req.headers.origin) {
-    return req.headers.origin.replace(/\/+$/, '');
-  }
-
-  if (typeof req.headers.referer === 'string' && req.headers.referer) {
-    try {
-      return new URL(req.headers.referer).origin;
-    } catch {
-      // Ignore invalid referer and fall back below.
+  if (!baseUrl) {
+    if (typeof req.headers.origin === 'string' && req.headers.origin) {
+      baseUrl = req.headers.origin.trim();
+    } else if (typeof req.headers.referer === 'string' && req.headers.referer) {
+      try {
+        baseUrl = new URL(req.headers.referer).origin;
+      } catch {
+        // Ignore invalid referer
+      }
     }
   }
 
-  return 'http://localhost:3000';
+  if (!baseUrl) {
+    baseUrl = 'http://localhost:3000';
+  }
+
+  // Ensure the URL always starts with an explicit scheme (e.g. http:// or https://) for APIs like Stripe
+  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    if (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
+      baseUrl = `http://${baseUrl}`;
+    } else {
+      baseUrl = `https://${baseUrl}`;
+    }
+  }
+
+  return baseUrl.replace(/\/+$/, '');
 }
 
 function getAdminDashboardUrl(req?: express.Request): string {
@@ -1773,13 +1788,13 @@ async function syncCheckoutFromStripe(
       session.status === 'expired' ? 'cancelled' : 'payment_pending';
 
     await pendingRef.set(
-      {
+      stripUndefined({
         status: nextStatus,
         payment_status: 'unpaid',
         stripe_payment_status: paymentState,
         stripe_payment_intent_id: paymentIntentId || undefined,
         updated_at: Timestamp.now(),
-      },
+      }),
       { merge: true },
     );
 
@@ -1836,7 +1851,7 @@ async function syncCheckoutFromStripe(
 
     transaction.set(
       pendingRef,
-      {
+      stripUndefined({
         status: 'paid',
         payment_status: 'paid',
         stripe_payment_status: paymentState,
@@ -1844,7 +1859,7 @@ async function syncCheckoutFromStripe(
         payment_reference: paymentIntentId || handle,
         final_order_id: orderRef.id,
         updated_at: Timestamp.now(),
-      },
+      }),
       { merge: true },
     );
   });
@@ -1912,7 +1927,7 @@ app.post('/api/stripe/session', checkoutLimiter, async (req, res) => {
     const pendingRef = db.collection(PENDING_CHECKOUTS_COLLECTION).doc(checkoutHandle);
     const now = Timestamp.now();
 
-    await pendingRef.set({
+    await pendingRef.set(stripUndefined({
       handle: checkoutHandle,
       status: 'creating_session',
       payment_provider: 'stripe',
@@ -1926,7 +1941,7 @@ app.post('/api/stripe/session', checkoutLimiter, async (req, res) => {
       delivery_distance_meters: checkout.deliveryDistanceMeters,
       created_at: now,
       updated_at: now,
-    } satisfies PendingCheckoutRecord);
+    } satisfies PendingCheckoutRecord));
 
     const session = await createStripeCheckoutSession({
       handle: checkoutHandle,
@@ -1935,12 +1950,12 @@ app.post('/api/stripe/session', checkoutLimiter, async (req, res) => {
     });
 
     await pendingRef.set(
-      {
+      stripUndefined({
         status: 'payment_pending',
         stripe_session_id: session.sessionId,
         stripe_checkout_url: session.checkoutUrl,
         updated_at: Timestamp.now(),
-      },
+      }),
       { merge: true },
     );
 
