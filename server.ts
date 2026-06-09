@@ -472,6 +472,28 @@ function buildOrderText(items: OrderItemSnapshot[]): string {
   return summary.length > 240 ? `${summary.slice(0, 237)}...` : summary;
 }
 
+/**
+ * Recursively strips properties with `undefined` values from an object.
+ * Firestore does not accept `undefined` as a field value; this prevents
+ * "Cannot use 'undefined' as a Firestore value" errors when optional
+ * fields (e.g. image_url on menu items without images) are missing.
+ */
+function stripUndefined<T>(obj: T): T {
+  if (obj === null || obj === undefined || typeof obj !== 'object') {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => stripUndefined(item)) as unknown as T;
+  }
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key] = stripUndefined(value);
+    }
+  }
+  return result as T;
+}
+
 function secureCompare(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);
@@ -1010,15 +1032,18 @@ async function validateCheckoutPayload(payload: {
       throw new Error(`"${menuRecord.name || item.menu_item_id}" has an invalid price.`);
     }
 
-    return {
+    const snapshot: OrderItemSnapshot = {
       menu_item_id: item.menu_item_id,
       variation_id: selectedVariation?.id,
       variation_label: variationLabel,
       name: variationLabel ? `${menuRecord.name || item.menu_item_id} (${variationLabel})` : menuRecord.name || item.menu_item_id,
       price,
       quantity: item.quantity,
-      image_url: menuRecord.image_url || undefined,
     };
+    if (menuRecord.image_url) {
+      snapshot.image_url = menuRecord.image_url;
+    }
+    return snapshot;
   });
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -1087,7 +1112,7 @@ async function createUnpaidOrder(
   const orderRef = db.collection(ORDERS_COLLECTION).doc();
   const now = Timestamp.now();
 
-  await orderRef.set({
+  await orderRef.set(stripUndefined({
     customer_info: {
       name: checkout.customerInfo.name,
       phone: checkout.customerInfo.phone,
@@ -1106,7 +1131,7 @@ async function createUnpaidOrder(
     delivery_distance_meters: checkout.deliveryDistanceMeters,
     created_at: now,
     updated_at: now,
-  });
+  }));
 
   // Fire-and-forget: don't block order creation on email delivery
   const emailOrderData = {
@@ -1784,7 +1809,7 @@ async function syncCheckoutFromStripe(
     createdOrderId = orderRef.id;
     createdOrderPayload = latestCheckout;
 
-    transaction.set(orderRef, {
+    transaction.set(orderRef, stripUndefined({
       customer_info: {
         name: latestCheckout.customer_info.name,
         phone: latestCheckout.customer_info.phone,
@@ -1807,7 +1832,7 @@ async function syncCheckoutFromStripe(
       delivery_distance_meters: latestCheckout.delivery_distance_meters,
       created_at: Timestamp.now(),
       updated_at: Timestamp.now(),
-    });
+    }));
 
     transaction.set(
       pendingRef,
