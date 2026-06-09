@@ -1201,13 +1201,20 @@ async function createStripeCheckoutSession(params: {
 
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = checkout.items.map((item) => {
     let images: string[] | undefined = undefined;
-    if (item.image_url) {
-      let absoluteUrl = item.image_url.trim();
+    const imageUrl = item.image_url?.trim() || '/images/default-food.svg';
+    if (imageUrl) {
+      let absoluteUrl = imageUrl;
       if (!absoluteUrl.startsWith('http://') && !absoluteUrl.startsWith('https://')) {
         absoluteUrl = `${baseUrl.replace(/\/+$/, '')}/${absoluteUrl.replace(/^\/+/, '')}`;
       }
       if (absoluteUrl.startsWith('http') && !absoluteUrl.includes('localhost') && !absoluteUrl.includes('127.0.0.1')) {
-        images = [absoluteUrl];
+        try {
+          // Strictly validate that this is a fully valid URL before sending to Stripe
+          const parsedUrl = new URL(absoluteUrl);
+          images = [parsedUrl.toString()];
+        } catch (err: any) {
+          console.warn(`[Stripe Checkout] Ignored invalid image URL: "${absoluteUrl}" - Error: ${err.message}`);
+        }
       }
     }
 

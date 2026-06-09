@@ -13,6 +13,7 @@ import {
   toggleMenuItemAvailability,
   type MenuItem,
   type MenuItemVariation,
+  DEFAULT_FOOD_IMAGE,
 } from '../services/menuService';
 import { uploadMenuItemImage } from '../services/imageUploadService';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -496,11 +497,16 @@ export function AdminMenuManager() {
                             alt={item.name}
                             className="w-full h-full object-cover"
                             referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = DEFAULT_FOOD_IMAGE;
+                            }}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <ImageIcon size={20} className="text-[var(--color-washi)]/15" />
-                          </div>
+                          <img
+                            src={DEFAULT_FOOD_IMAGE}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
                         )}
                         {!item.is_available && (
                           <div className="absolute inset-0 bg-[var(--color-sumi)]/60 flex items-center justify-center">

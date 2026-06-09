@@ -31,6 +31,8 @@ export interface MenuItemVariation {
   price: number;
 }
 
+export const DEFAULT_FOOD_IMAGE = '/images/default-food.svg';
+
 const COLLECTION = 'menu_items';
 
 /**

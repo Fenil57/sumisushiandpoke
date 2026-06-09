@@ -8,6 +8,7 @@ import {
   getMenuItemVariations,
   getMenuItems,
   type MenuItem,
+  DEFAULT_FOOD_IMAGE,
 } from "../services/menuService";
 import { useCart } from "../context/CartContext";
 import { SEOHead } from "../components/SEOHead";
@@ -382,11 +383,16 @@ export function OrderOnline() {
                             alt={item.name}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = DEFAULT_FOOD_IMAGE;
+                            }}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[var(--color-sumi)]/20">
-                            <RamenBowlIcon className="w-10 h-10" />
-                          </div>
+                          <img
+                            src={DEFAULT_FOOD_IMAGE}
+                            alt={item.name}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          />
                         )}
                         <div className="absolute inset-0 bg-[var(--color-sumi)]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
