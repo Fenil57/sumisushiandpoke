@@ -1207,7 +1207,13 @@ async function createStripeCheckoutSession(params: {
         absoluteUrl = `${baseUrl.replace(/\/+$/, '')}/${absoluteUrl.replace(/^\/+/, '')}`;
       }
       if (absoluteUrl.startsWith('http') && !absoluteUrl.includes('localhost') && !absoluteUrl.includes('127.0.0.1')) {
-        images = [absoluteUrl];
+        try {
+          // Strictly validate that this is a fully valid URL before sending to Stripe
+          const parsedUrl = new URL(absoluteUrl);
+          images = [parsedUrl.toString()];
+        } catch (err: any) {
+          console.warn(`[Stripe Checkout] Ignored invalid image URL: "${absoluteUrl}" - Error: ${err.message}`);
+        }
       }
     }
 

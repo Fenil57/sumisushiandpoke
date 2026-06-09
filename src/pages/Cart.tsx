@@ -21,6 +21,7 @@ import {
   SERVICE_TEMPORARILY_CLOSED,
   ServiceClosedPopup,
 } from "../components/ServiceClosed";
+import { DEFAULT_FOOD_IMAGE } from "../services/menuService";
 
 const RamenBowlIcon = ({
   className = "w-6 h-6",
@@ -725,11 +726,16 @@ export function Cart() {
                             src={item.image_url}
                             alt={item.name}
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = DEFAULT_FOOD_IMAGE;
+                            }}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[var(--color-sumi)]/20">
-                            <RamenBowlIcon className="w-8 h-8" />
-                          </div>
+                          <img
+                            src={DEFAULT_FOOD_IMAGE}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
                         )}
                       </div>
                       <div className="flex-1 flex flex-col justify-between">
