@@ -1201,8 +1201,9 @@ async function createStripeCheckoutSession(params: {
 
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = checkout.items.map((item) => {
     let images: string[] | undefined = undefined;
-    if (item.image_url) {
-      let absoluteUrl = item.image_url.trim();
+    const imageUrl = item.image_url?.trim() || '/images/default-food.svg';
+    if (imageUrl) {
+      let absoluteUrl = imageUrl;
       if (!absoluteUrl.startsWith('http://') && !absoluteUrl.startsWith('https://')) {
         absoluteUrl = `${baseUrl.replace(/\/+$/, '')}/${absoluteUrl.replace(/^\/+/, '')}`;
       }

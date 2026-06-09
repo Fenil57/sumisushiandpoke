@@ -31,7 +31,7 @@ export interface MenuItemVariation {
   price: number;
 }
 
-export const DEFAULT_FOOD_IMAGE = 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=800&q=80';
+export const DEFAULT_FOOD_IMAGE = '/images/default-food.svg';
 
 const COLLECTION = 'menu_items';
 
