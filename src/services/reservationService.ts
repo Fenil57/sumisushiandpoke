@@ -4,7 +4,8 @@ import {
   orderBy, 
   onSnapshot, 
   doc, 
-  updateDoc 
+  updateDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 
@@ -24,6 +25,7 @@ export interface Reservation {
   status: ReservationStatus;
   created_at: any;
   updated_at: any;
+  seenAt?: any;
 }
 
 const RESERVATIONS_COLLECTION = 'reservations';
@@ -40,7 +42,7 @@ export function subscribeToReservations(
   return onSnapshot(q, (snapshot) => {
     const reservations: Reservation[] = [];
     snapshot.forEach((doc) => {
-      reservations.push({ id: doc.id, ...doc.data() } as Reservation);
+      reservations.push({ id: doc.id, ...doc.data({ serverTimestamps: 'estimate' }) } as Reservation);
     });
     callback(reservations);
   }, (error) => {
@@ -66,4 +68,12 @@ export async function updateReservationStatus(reservationId: string, status: Res
     const data = await response.json().catch(() => ({}));
     throw new Error(data.error || 'Failed to update reservation status');
   }
+}
+
+export async function markReservationAsSeen(reservationId: string): Promise<void> {
+  const ref = doc(db, RESERVATIONS_COLLECTION, reservationId);
+  await updateDoc(ref, {
+    seenAt: serverTimestamp(),
+    updated_at: serverTimestamp()
+  });
 }

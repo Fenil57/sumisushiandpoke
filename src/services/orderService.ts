@@ -9,6 +9,7 @@ import {
   onSnapshot,
   Timestamp,
   type Unsubscribe,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 
@@ -48,6 +49,7 @@ export interface Order {
   delivery_distance_meters?: number;
   created_at: Timestamp;
   updated_at: Timestamp;
+  seenAt?: Timestamp | null;
 }
 
 const COLLECTION = 'orders';
@@ -100,7 +102,7 @@ export async function getOrders(): Promise<Order[]> {
 export function subscribeToOrders(callback: (orders: Order[]) => void): Unsubscribe {
   const q = query(collection(db, COLLECTION), orderBy('created_at', 'desc'));
   return onSnapshot(q, (snapshot) => {
-    const orders = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
+    const orders = snapshot.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) } as Order));
     callback(orders);
   });
 }
@@ -141,5 +143,16 @@ export async function updatePaymentStatus(
   await updateDoc(ref, {
     payment_status: paymentStatus,
     updated_at: Timestamp.now(),
+  });
+}
+
+/**
+ * Mark order as seen (admin).
+ */
+export async function markOrderAsSeen(orderId: string): Promise<void> {
+  const ref = doc(db, COLLECTION, orderId);
+  await updateDoc(ref, {
+    seenAt: serverTimestamp(),
+    updated_at: serverTimestamp(),
   });
 }

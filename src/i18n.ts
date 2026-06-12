@@ -181,7 +181,7 @@ const resources = {
         buffet: "Buffet"
       },
       admin: {
-        title: "管理",
+        title: "Sumi Sushi and Poke - Admin Dashboard",
         pending: "New Order",
         preparing: "Preparing",
         ready: "Ready",
@@ -466,7 +466,7 @@ const resources = {
         buffet: "Buffet"
       },
       admin: {
-        title: "Hallinta",
+        title: "Sumi Sushi and Poke - Hallintapaneeli",
         pending: "Uusi Tilaus",
         preparing: "Valmistuksessa",
         ready: "Valmiina",

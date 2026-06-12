@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Calendar, Clock, Users, CheckCircle2, XCircle, Bell, Filter, AlertTriangle } from "lucide-react";
-import { subscribeToReservations, updateReservationStatus, type Reservation, type ReservationStatus } from "../services/reservationService";
+import { updateReservationStatus, type Reservation, type ReservationStatus } from "../services/reservationService";
 import { ConfirmationModal } from './ui/ConfirmationModal';
 
 const STATUS_CONFIG: Record<ReservationStatus, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
@@ -25,10 +25,25 @@ const STATUS_CONFIG: Record<ReservationStatus, { label: string; color: string; b
   },
 };
 
+function getTimestampMs(field: any): number {
+  if (!field) return 0;
+  if (typeof field.toDate === 'function') return field.toDate().getTime();
+  if (typeof field._seconds === 'number') return field._seconds * 1000 + (field._nanoseconds || 0) / 1e6;
+  if (typeof field.seconds === 'number') return field.seconds * 1000 + (field.nanoseconds || 0) / 1e6;
+  if (typeof field === 'string') { const ms = new Date(field).getTime(); return isNaN(ms) ? 0 : ms; }
+  if (field instanceof Date) { const ms = field.getTime(); return isNaN(ms) ? 0 : ms; }
+  return 0;
+}
+
+function parseTimestampToDate(field: any): Date | null {
+  const ms = getTimestampMs(field);
+  return ms > 0 ? new Date(ms) : null;
+}
+
 function formatTimeAgo(timestamp: any): string {
-  if (!timestamp?.toDate) return "";
+  const date = parseTimestampToDate(timestamp);
+  if (!date) return "";
   const now = new Date();
-  const date = timestamp.toDate();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
 
@@ -39,30 +54,22 @@ function formatTimeAgo(timestamp: any): string {
   return date.toLocaleDateString("fi-FI");
 }
 
-export function AdminReservations() {
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+interface AdminReservationsProps {
+  reservations: Reservation[];
+  isLoadingReservations: boolean;
+  reservationsError: string | null;
+  onMarkSeen: (id: string) => void;
+}
+
+export function AdminReservations({
+  reservations,
+  isLoadingReservations,
+  reservationsError,
+  onMarkSeen,
+}: AdminReservationsProps) {
   const [filter, setFilter] = useState<ReservationStatus | "all">("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [resToCancel, setResToCancel] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = subscribeToReservations(
-      (data) => {
-        setReservations(data);
-        setIsLoading(false);
-        setError(null);
-      },
-      (err) => {
-        setIsLoading(false);
-        setError("Failed to load reservations. Please check your permissions.");
-        console.error(err);
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
 
   const handleStatusUpdate = async (id: string, newStatus: ReservationStatus) => {
     if (newStatus === 'cancelled') {
@@ -73,6 +80,10 @@ export function AdminReservations() {
     
     try {
       await updateReservationStatus(id, newStatus);
+      const res = reservations.find(r => r.id === id);
+      if (res && !res.seenAt) {
+        onMarkSeen(id);
+      }
     } catch (err) {
       console.error("Failed to update reservation status:", err);
     }
@@ -82,6 +93,10 @@ export function AdminReservations() {
     if (!resToCancel) return;
     try {
       await updateReservationStatus(resToCancel, "cancelled");
+      const res = reservations.find(r => r.id === resToCancel);
+      if (res && !res.seenAt) {
+        onMarkSeen(resToCancel);
+      }
     } catch (err) {
       console.error("Failed to reject reservation:", err);
     }
@@ -118,7 +133,7 @@ export function AdminReservations() {
 
       {/* Grid */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 pb-12">
-        {isLoading ? (
+        {isLoadingReservations ? (
           <div className="flex items-center justify-center py-24">
             <div className="text-center">
               <div className="w-10 h-10 border-2 border-[var(--color-shu)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -127,12 +142,12 @@ export function AdminReservations() {
               </p>
             </div>
           </div>
-        ) : error ? (
+        ) : reservationsError ? (
           <div className="flex items-center justify-center py-24">
             <div className="text-center bg-red-500/10 border border-red-500/20 p-8 max-w-md">
               <XCircle size={48} className="text-red-400 mx-auto mb-4" />
               <p className="text-red-400 text-sm font-bold mb-2">Error Loading Data</p>
-              <p className="text-red-400/60 text-xs">{error}</p>
+              <p className="text-red-400/60 text-xs">{reservationsError}</p>
             </div>
           </div>
         ) : filteredReservations.length === 0 ? (
@@ -155,8 +170,12 @@ export function AdminReservations() {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     key={reservation.id}
-                    className={`bg-[var(--color-washi)]/[0.03] border border-[var(--color-washi)]/10 p-5 relative group transition-colors ${
-                      reservation.status === "pending" ? "ring-1 ring-amber-400/20" : ""
+                    className={`bg-[var(--color-washi)]/[0.03] border p-5 relative group transition-colors ${
+                      !reservation.seenAt
+                        ? "border-[var(--color-shu)]/40 ring-1 ring-[var(--color-shu)]/20"
+                        : "border-[var(--color-washi)]/10"
+                    } ${
+                      reservation.status === "pending" && reservation.seenAt ? "ring-1 ring-amber-400/20" : ""
                     }`}
                   >
                     {/* Header */}
@@ -165,7 +184,13 @@ export function AdminReservations() {
                         {config.icon}
                         {config.label}
                       </div>
-                      <div className="flex flex-col items-end">
+                      <div className="flex flex-col items-end pr-6 relative">
+                        {!reservation.seenAt && (
+                          <span className="absolute right-0 top-1/2 -translate-y-1/2 flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-shu)] opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-shu)]"></span>
+                          </span>
+                        )}
                         <span className="text-[10px] tracking-[0.15em] uppercase text-[var(--color-washi)]/25">
                           #{reservation.id?.slice(-8).toUpperCase()}
                         </span>
@@ -222,32 +247,55 @@ export function AdminReservations() {
                     )}
 
                     {/* Actions */}
-                    {reservation.status === 'pending' && (
-                      <div className="flex gap-2 mt-4 pt-4 border-t border-[var(--color-washi)]/10">
+                    <div className="flex gap-2 mt-4 pt-4 border-t border-[var(--color-washi)]/10 justify-between items-center">
+                      {!reservation.seenAt && (
                         <button
-                          onClick={() => handleStatusUpdate(reservation.id!, "confirmed")}
-                          className="flex-1 py-2.5 border border-emerald-400/30 text-emerald-400 text-[10px] tracking-[0.15em] uppercase font-bold hover:bg-emerald-400/10 transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMarkSeen(reservation.id!);
+                          }}
+                          className="px-3 py-1.5 border border-[var(--color-shu)]/30 text-[var(--color-shu)] text-[10px] tracking-[0.15em] uppercase font-bold hover:bg-[var(--color-shu)]/10 transition-colors cursor-pointer"
                         >
-                          Confirm
+                          Mark Seen
                         </button>
-                        <button
-                          onClick={() => handleStatusUpdate(reservation.id!, "cancelled")}
-                          className="px-4 py-2.5 border border-red-400/30 text-red-400 text-[10px] tracking-[0.15em] uppercase font-bold hover:bg-red-400/10 transition-colors cursor-pointer"
-                        >
-                          Reject
-                        </button>
+                      )}
+                      
+                      <div className="flex gap-2 flex-1 justify-end">
+                        {reservation.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusUpdate(reservation.id!, "confirmed");
+                              }}
+                              className="px-4 py-2.5 border border-emerald-400/30 text-emerald-400 text-[10px] tracking-[0.15em] uppercase font-bold hover:bg-emerald-400/10 transition-colors cursor-pointer"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusUpdate(reservation.id!, "cancelled");
+                              }}
+                              className="px-4 py-2.5 border border-red-400/30 text-red-400 text-[10px] tracking-[0.15em] uppercase font-bold hover:bg-red-400/10 transition-colors cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        {reservation.status === 'confirmed' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStatusUpdate(reservation.id!, "cancelled");
+                            }}
+                            className="px-4 py-2 border border-[var(--color-washi)]/10 text-[var(--color-washi)]/40 hover:text-red-400 hover:border-red-400/30 text-[10px] tracking-[0.15em] uppercase font-bold transition-colors cursor-pointer"
+                          >
+                            Cancel Booking
+                          </button>
+                        )}
                       </div>
-                    )}
-                    {reservation.status === 'confirmed' && (
-                      <div className="flex justify-end mt-4 pt-4 border-t border-[var(--color-washi)]/10">
-                        <button
-                          onClick={() => handleStatusUpdate(reservation.id!, "cancelled")}
-                          className="px-4 py-2 border border-[var(--color-washi)]/10 text-[var(--color-washi)]/40 hover:text-red-400 hover:border-red-400/30 text-[10px] tracking-[0.15em] uppercase font-bold transition-colors cursor-pointer"
-                        >
-                          Cancel Booking
-                        </button>
-                      </div>
-                    )}
+                    </div>
                   </motion.div>
                 );
               })}
