@@ -899,17 +899,31 @@ export function AdminDashboard() {
                             {order.items?.map((item, idx) => (
                               <div
                                 key={idx}
-                                className="flex justify-between items-center text-sm"
+                                className="text-sm"
                               >
-                                <span className="text-[var(--color-washi)]/70">
-                                  <span className="text-[var(--color-shu)] font-bold mr-1.5">
-                                    {item.quantity}×
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[var(--color-washi)]/70">
+                                    <span className="text-[var(--color-shu)] font-bold mr-1.5">
+                                      {item.quantity}×
+                                    </span>
+                                    {item.name}
                                   </span>
-                                  {item.name}
-                                </span>
-                                <span className="text-[var(--color-washi)]/40">
-                                  €{(item.price * item.quantity).toFixed(2)}
-                                </span>
+                                  <span className="text-[var(--color-washi)]/40">
+                                    €{(item.price * item.quantity).toFixed(2)}
+                                  </span>
+                                </div>
+                                {item.customization_summary && item.customization_summary.length > 0 && (
+                                  <div className="mt-1 ml-6 space-y-0.5">
+                                    {item.customization_summary.map((line) => (
+                                      <p
+                                        key={line}
+                                        className="text-xs leading-5 text-[var(--color-washi)]/40"
+                                      >
+                                        {line}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>

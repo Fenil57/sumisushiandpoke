@@ -107,6 +107,23 @@ interface MenuItemRecord {
     label?: string;
     price?: number;
   }[];
+  customization_groups?: MenuCustomizationGroupRecord[];
+}
+
+interface MenuCustomizationGroupRecord {
+  id?: string;
+  title?: string;
+  min_select?: number;
+  max_select?: number;
+  free_select_count?: number;
+  options?: MenuCustomizationOptionRecord[];
+}
+
+interface MenuCustomizationOptionRecord {
+  id?: string;
+  label?: string;
+  price?: number;
+  is_available?: boolean;
 }
 
 interface SiteSettingsRecord {
@@ -119,7 +136,13 @@ interface CheckoutItemInput {
   menu_item_id?: string;
   id?: string;
   variation_id?: string;
+  customization_selections?: CheckoutCustomizationSelectionInput[];
   quantity?: number;
+}
+
+interface CheckoutCustomizationSelectionInput {
+  group_id?: string;
+  option_ids?: string[];
 }
 
 interface CustomerInfoInput {
@@ -133,6 +156,7 @@ interface OrderItemSnapshot {
   menu_item_id: string;
   variation_id?: string;
   variation_label?: string;
+  customization_summary?: string[];
   name: string;
   price: number;
   quantity: number;
@@ -485,6 +509,78 @@ function isValidPhone(phone: string): boolean {
 function buildOrderText(items: OrderItemSnapshot[]): string {
   const summary = items.map((item) => `${item.quantity}x ${item.name}`).join(', ');
   return summary.length > 240 ? `${summary.slice(0, 237)}...` : summary;
+}
+
+function normalizeCustomizationGroups(menuRecord: MenuItemRecord): Required<MenuCustomizationGroupRecord>[] {
+  return (Array.isArray(menuRecord.customization_groups) ? menuRecord.customization_groups : [])
+    .filter((group) => group.id && group.title && Array.isArray(group.options))
+    .map((group) => ({
+      id: String(group.id),
+      title: String(group.title),
+      min_select: Math.max(0, Number(group.min_select) || 0),
+      max_select: Math.max(1, Number(group.max_select) || 1),
+      free_select_count: Math.max(0, Number(group.free_select_count) || 0),
+      options: (group.options || [])
+        .filter((option) => option.id && option.label && option.is_available !== false)
+        .map((option) => ({
+          id: String(option.id),
+          label: String(option.label),
+          price:
+            typeof option.price === 'number' && !Number.isNaN(option.price)
+              ? option.price
+              : 0,
+          is_available: option.is_available !== false,
+        })),
+    }))
+    .filter((group) => group.options.length > 0);
+}
+
+function validateCustomizationSelections(
+  menuRecord: MenuItemRecord,
+  inputSelections: CheckoutCustomizationSelectionInput[] | undefined,
+) {
+  const groups = normalizeCustomizationGroups(menuRecord);
+  const selections = Array.isArray(inputSelections) ? inputSelections : [];
+  const summary: string[] = [];
+  let extraPrice = 0;
+
+  for (const group of groups) {
+    const selection = selections.find(
+      (entry) => sanitizeString(entry?.group_id, 128) === group.id,
+    );
+    const optionIds = Array.isArray(selection?.option_ids)
+      ? selection!.option_ids.map((id) => sanitizeString(id, 128)).filter(Boolean)
+      : [];
+    const uniqueOptionIds = [...new Set(optionIds)];
+
+    if (uniqueOptionIds.length < group.min_select) {
+      throw new Error(`"${menuRecord.name || 'Menu item'}" requires a selection for "${group.title}".`);
+    }
+
+    if (uniqueOptionIds.length > group.max_select) {
+      throw new Error(`"${group.title}" allows up to ${group.max_select} selections.`);
+    }
+
+    const selectedOptions = uniqueOptionIds.map((optionId) => {
+      const option = group.options.find((entry) => entry.id === optionId);
+      if (!option) {
+        throw new Error(`"${group.title}" has an invalid selection.`);
+      }
+      return option;
+    });
+
+    extraPrice += selectedOptions.reduce(
+      (total, option, index) =>
+        total + (index < group.free_select_count ? 0 : option.price || 0),
+      0,
+    );
+
+    if (selectedOptions.length > 0) {
+      summary.push(`${group.title}: ${selectedOptions.map((option) => option.label).join(', ')}`);
+    }
+  }
+
+  return { extraPrice, summary };
 }
 
 /**
@@ -986,6 +1082,14 @@ async function validateCheckoutPayload(payload: {
   const normalizedCart = rawCart.map((entry) => {
     const menuItemId = sanitizeString(entry.menu_item_id || entry.id);
     const variationId = sanitizeString(entry.variation_id);
+    const customizationSelections = Array.isArray(entry.customization_selections)
+      ? entry.customization_selections.map((selection) => ({
+          group_id: sanitizeString(selection.group_id, 128),
+          option_ids: Array.isArray(selection.option_ids)
+            ? selection.option_ids.map((optionId) => sanitizeString(optionId, 128)).filter(Boolean)
+            : [],
+        }))
+      : [];
     const quantity = Number(entry.quantity || 0);
 
     if (!menuItemId) {
@@ -996,7 +1100,12 @@ async function validateCheckoutPayload(payload: {
       throw new Error('One or more cart item quantities are invalid.');
     }
 
-    return { menu_item_id: menuItemId, variation_id: variationId || undefined, quantity };
+    return {
+      menu_item_id: menuItemId,
+      variation_id: variationId || undefined,
+      customization_selections: customizationSelections,
+      quantity,
+    };
   });
 
   const dedupedIds = [...new Set(normalizedCart.map((item) => item.menu_item_id))];
@@ -1036,7 +1145,11 @@ async function validateCheckoutPayload(payload: {
     const selectedVariation = variations.length > 0
       ? variations.find((variation) => variation.id === item.variation_id) || (!item.variation_id ? variations[0] : undefined)
       : undefined;
-    const price = selectedVariation?.price ?? menuRecord.price;
+    const customization = validateCustomizationSelections(
+      menuRecord,
+      item.customization_selections,
+    );
+    const price = (selectedVariation?.price ?? menuRecord.price ?? 0) + customization.extraPrice;
     const variationLabel = selectedVariation?.label;
 
     if (variations.length > 0 && item.variation_id && !selectedVariation) {
@@ -1051,6 +1164,7 @@ async function validateCheckoutPayload(payload: {
       menu_item_id: item.menu_item_id,
       variation_id: selectedVariation?.id,
       variation_label: variationLabel,
+      customization_summary: customization.summary.length > 0 ? customization.summary : undefined,
       name: variationLabel ? `${menuRecord.name || item.menu_item_id} (${variationLabel})` : menuRecord.name || item.menu_item_id,
       price,
       quantity: item.quantity,
@@ -1223,7 +1337,9 @@ async function createStripeCheckoutSession(params: {
         currency: 'eur',
         product_data: {
           name: item.name,
-          description: item.variation_label || undefined,
+          description: item.customization_summary?.length
+            ? item.customization_summary.join(' | ')
+            : item.variation_label || undefined,
           images,
         },
         unit_amount: toCents(item.price),
@@ -1311,7 +1427,7 @@ async function sendOrderNotificationEmail(
     customerEmail: string;
     customerAddress?: string;
     orderType: string;
-    items: { name: string; quantity: number; price: number }[];
+    items: { name: string; quantity: number; price: number; customization_summary?: string[] }[];
     subtotal: number;
     deliveryFee: number;
     total: number;
@@ -1333,7 +1449,14 @@ async function sendOrderNotificationEmail(
       (item) => `
         <tr>
           <td style="padding:8px 12px;border-bottom:1px solid #333;color:#ccc;">${item.quantity}x</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #333;color:#e8e0d4;">${item.name}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #333;color:#e8e0d4;">
+            ${item.name}
+            ${
+              item.customization_summary?.length
+                ? `<div style="margin-top:6px;color:#888;font-size:12px;line-height:1.5;">${item.customization_summary.join('<br>')}</div>`
+                : ''
+            }
+          </td>
           <td style="padding:8px 12px;border-bottom:1px solid #333;color:#ccc;text-align:right;">€ ${(item.price * item.quantity).toFixed(2)}</td>
         </tr>
       `,
@@ -1417,7 +1540,7 @@ async function sendOrderConfirmationEmail(
     customerName: string;
     customerEmail: string;
     orderType: string;
-    items: { name: string; quantity: number; price: number }[];
+    items: { name: string; quantity: number; price: number; customization_summary?: string[] }[];
     subtotal: number;
     deliveryFee: number;
     total: number;

@@ -10,6 +10,23 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import i18n from 'i18next';
+
+export function translateCustomizationText(text: string, lang?: string): string {
+  const currentLang = (lang || i18n.language || 'fi').slice(0, 2).toLowerCase();
+  const key = `order.customization.items.${text}`;
+  return i18n.exists(key, { lng: currentLang })
+    ? i18n.t(key, { lng: currentLang })
+    : text;
+}
+
+export function translateItemName(name: string, lang?: string): string {
+  const currentLang = (lang || i18n.language || 'fi').slice(0, 2).toLowerCase();
+  const key = `order.items.${name}`;
+  return i18n.exists(key, { lng: currentLang })
+    ? i18n.t(key, { lng: currentLang })
+    : name;
+}
 
 export interface MenuItem {
   id: string;
@@ -17,6 +34,7 @@ export interface MenuItem {
   description: string;
   price: number;
   variations?: MenuItemVariation[];
+  customization_groups?: MenuCustomizationGroup[];
   category: string;
   image_url: string;
   is_available: boolean;
@@ -29,6 +47,28 @@ export interface MenuItemVariation {
   id: string;
   label: string;
   price: number;
+}
+
+export interface MenuCustomizationOption {
+  id: string;
+  label: string;
+  price: number;
+  is_available?: boolean;
+}
+
+export interface MenuCustomizationGroup {
+  id: string;
+  title: string;
+  min_select?: number;
+  max_select: number;
+  free_select_count?: number;
+  default_option_ids?: string[];
+  options: MenuCustomizationOption[];
+}
+
+export interface MenuCustomizationSelection {
+  group_id: string;
+  option_ids: string[];
 }
 
 export const DEFAULT_FOOD_IMAGE = '/images/default-food.svg';
@@ -84,6 +124,82 @@ export function getMenuItemVariations(item: MenuItem): MenuItemVariation[] {
 
 export function getDefaultMenuItemVariation(item: MenuItem): MenuItemVariation {
   return getMenuItemVariations(item)[0];
+}
+
+export function getMenuCustomizationGroups(item: MenuItem): MenuCustomizationGroup[] {
+  return (item.customization_groups || [])
+    .filter((group) => group.id && group.title && Array.isArray(group.options))
+    .map((group) => ({
+      ...group,
+      min_select: Math.max(0, Number(group.min_select) || 0),
+      max_select: Math.max(1, Number(group.max_select) || 1),
+      free_select_count: Math.max(0, Number(group.free_select_count) || 0),
+      options: group.options
+        .filter((option) => option.id && option.label && option.is_available !== false)
+        .map((option) => ({
+          ...option,
+          price:
+            typeof option.price === 'number' && !Number.isNaN(option.price)
+              ? option.price
+              : 0,
+        })),
+    }))
+    .filter((group) => group.options.length > 0);
+}
+
+export function hasMenuCustomizations(item: MenuItem): boolean {
+  return getMenuCustomizationGroups(item).length > 0;
+}
+
+export function calculateCustomizationPrice(
+  item: MenuItem,
+  selections: MenuCustomizationSelection[] = [],
+): number {
+  const groups = getMenuCustomizationGroups(item);
+
+  return selections.reduce((total, selection) => {
+    const group = groups.find((entry) => entry.id === selection.group_id);
+    if (!group) return total;
+
+    const freeCount = group.free_select_count || 0;
+    const selectedOptions = selection.option_ids
+      .map((optionId) => group.options.find((option) => option.id === optionId))
+      .filter(Boolean) as MenuCustomizationOption[];
+
+    return (
+      total +
+      selectedOptions.reduce(
+        (groupTotal, option, index) =>
+          groupTotal + (index < freeCount ? 0 : option.price || 0),
+        0,
+      )
+    );
+  }, 0);
+}
+
+export function formatCustomizationSummary(
+  item: MenuItem,
+  selections: MenuCustomizationSelection[] = [],
+  lang?: string,
+): string[] {
+  const groups = getMenuCustomizationGroups(item);
+  const currentLang = lang || i18n.language || 'fi';
+
+  return selections
+    .map((selection) => {
+      const group = groups.find((entry) => entry.id === selection.group_id);
+      if (!group) return null;
+
+      const labels = selection.option_ids
+        .map((optionId) => group.options.find((option) => option.id === optionId)?.label)
+        .filter(Boolean);
+
+      const translatedTitle = translateCustomizationText(group.title, currentLang);
+      const translatedLabels = labels.map((l) => translateCustomizationText(l, currentLang));
+
+      return translatedLabels.length > 0 ? `${translatedTitle}: ${translatedLabels.join(', ')}` : null;
+    })
+    .filter(Boolean) as string[];
 }
 
 export function getMenuItemPriceRange(item: MenuItem): string {
