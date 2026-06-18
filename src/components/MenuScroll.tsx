@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslation } from "react-i18next";
 import {
@@ -7,6 +7,7 @@ import {
   getMenuItemPriceRange,
   getMenuItems,
   translateItemName,
+  hasMenuCustomizations,
   type MenuItem,
 } from "../services/menuService";
 import { useCart } from "../context/CartContext";
@@ -32,6 +33,7 @@ function pickFeaturedItems(items: MenuItem[]): MenuItem[] {
 }
 
 export function MenuScroll() {
+  const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [menuStatus, setMenuStatus] = useState<"loading" | "ready" | "empty">(
@@ -44,6 +46,10 @@ export function MenuScroll() {
   const handleAddToCart = (e: React.MouseEvent, item: MenuItem) => {
     e.preventDefault();
     e.stopPropagation();
+    if (hasMenuCustomizations(item)) {
+      navigate(`/order?addItem=${item.id}`);
+      return;
+    }
     addToCart(item, getDefaultMenuItemVariation(item));
     setAddedItemId(item.id);
     setTimeout(() => setAddedItemId(null), 2000);

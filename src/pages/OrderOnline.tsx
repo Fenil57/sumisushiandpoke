@@ -592,7 +592,11 @@ export function OrderOnline() {
     if (itemId) {
       const itemToAdd = menuItems.find((item) => item.id === itemId);
       if (itemToAdd) {
-        addToCart(itemToAdd, getDefaultMenuItemVariation(itemToAdd));
+        if (hasMenuCustomizations(itemToAdd)) {
+          setCustomizingItem(itemToAdd);
+        } else {
+          addToCart(itemToAdd, getDefaultMenuItemVariation(itemToAdd));
+        }
         hasAddedFromUrl.current = true;
 
         // Clean the URL without reloading the page
