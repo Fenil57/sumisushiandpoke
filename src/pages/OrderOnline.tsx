@@ -7,7 +7,14 @@ import {
   getMenuItemPriceRange,
   getMenuItemVariations,
   getMenuItems,
+  getMenuCustomizationGroups,
+  hasMenuCustomizations,
+  calculateCustomizationPrice,
+  translateCustomizationText,
+  translateItemName,
   type MenuItem,
+  type MenuItemVariation,
+  type MenuCustomizationSelection,
   DEFAULT_FOOD_IMAGE,
 } from "../services/menuService";
 import { useCart } from "../context/CartContext";
@@ -38,6 +45,19 @@ const RamenBowlIcon = ({
 );
 
 const MENU_SKELETON_COUNT = 9;
+const MOBILE_DESCRIPTION_PREVIEW_LENGTH = 90;
+const DESKTOP_DESCRIPTION_PREVIEW_LENGTH = 56;
+
+function getDescriptionPreview(text: string, previewLength: number) {
+  const trimmedText = text.trim();
+
+  if (trimmedText.length <= previewLength) return trimmedText;
+
+  const preview = trimmedText.slice(0, previewLength).trim();
+  const lastSpaceIndex = preview.lastIndexOf(" ");
+
+  return lastSpaceIndex > 0 ? preview.slice(0, lastSpaceIndex) : preview;
+}
 
 function MenuItemSkeleton() {
   return (
@@ -63,6 +83,404 @@ function MenuItemSkeleton() {
   );
 }
 
+interface MenuDescriptionProps {
+  text?: string;
+}
+
+function MenuDescription({ text }: MenuDescriptionProps) {
+  const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [previewLength, setPreviewLength] = useState(
+    MOBILE_DESCRIPTION_PREVIEW_LENGTH,
+  );
+
+  const descriptionText = (text || "").trim();
+  const isTruncatable = descriptionText.length > previewLength;
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 640px)");
+    const updatePreviewLength = () => {
+      setPreviewLength(
+        mediaQuery.matches
+          ? DESKTOP_DESCRIPTION_PREVIEW_LENGTH
+          : MOBILE_DESCRIPTION_PREVIEW_LENGTH,
+      );
+    };
+
+    updatePreviewLength();
+    mediaQuery.addEventListener("change", updatePreviewLength);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updatePreviewLength);
+    };
+  }, []);
+
+  if (!descriptionText) return null;
+
+  if (!isTruncatable) {
+    return (
+      <p className="text-sm text-[var(--color-sumi)]/60 leading-6 mb-4">
+        {descriptionText}
+      </p>
+    );
+  }
+
+  const previewText = getDescriptionPreview(descriptionText, previewLength);
+
+  return (
+    <motion.div
+      layout
+      transition={{ duration: 0.25, ease: "easeInOut" }}
+      className={`mb-4 text-sm text-[var(--color-sumi)]/60 leading-6 ${
+        isExpanded ? "" : "line-clamp-2"
+      }`}
+    >
+      <span>{isExpanded ? descriptionText : `${previewText}...`}</span>
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
+        className="font-bold text-[var(--color-shu)] ml-1.5 hover:underline cursor-pointer inline align-baseline"
+      >
+        {isExpanded ? t("menu.showLess") : t("menu.readMore")}
+      </button>
+    </motion.div>
+  );
+}
+
+// ─── CustomizationModal ─────────────────────────────────────────────
+interface CustomizationModalProps {
+  item: MenuItem;
+  onClose: () => void;
+  onAdd: (
+    item: MenuItem,
+    variation: MenuItemVariation,
+    selections: MenuCustomizationSelection[],
+    quantity: number,
+  ) => void;
+}
+
+function CustomizationModal({ item, onClose, onAdd }: CustomizationModalProps) {
+  const { t, i18n } = useTranslation();
+  const groups = getMenuCustomizationGroups(item);
+  const variations = getMenuItemVariations(item);
+  const [selectedVariationId, setSelectedVariationId] = useState(variations[0].id);
+  const [quantity, setQuantity] = useState(1);
+
+  // Initialize selections with defaults or fallback to first option(s) for required groups
+  const [selections, setSelections] = useState<Record<string, string[]>>(() => {
+    const initial: Record<string, string[]> = {};
+    for (const group of groups) {
+      const defaults = group.default_option_ids;
+      let selected: string[] = [];
+      if (defaults && defaults.length > 0) {
+        selected = defaults.filter(
+          (id) => group.options.some((opt) => opt.id === id),
+        );
+      }
+      
+      // Fallback: if no valid defaults but the group is required (min_select > 0)
+      if (selected.length === 0 && (group.min_select || 0) > 0 && group.options.length > 0) {
+        const numToSelect = Math.min(group.min_select || 1, group.options.length);
+        selected = group.options.slice(0, numToSelect).map((opt) => opt.id);
+      }
+      
+      if (selected.length > 0) {
+        initial[group.id] = selected.slice(0, group.max_select);
+      }
+    }
+    return initial;
+  });
+
+  const selectedVariation =
+    variations.find((v) => v.id === selectedVariationId) || variations[0];
+  const selectionPayload = groups.map((g) => ({
+    group_id: g.id,
+    option_ids: selections[g.id] || [],
+  }));
+  const extraPrice = calculateCustomizationPrice(item, selectionPayload);
+  const unitPrice = selectedVariation.price + extraPrice;
+  const totalPrice = unitPrice * quantity;
+  const missingRequired = groups.find(
+    (g) => (g.min_select || 0) > (selections[g.id]?.length || 0),
+  );
+
+  const toggleOption = (groupId: string, optionId: string) => {
+    const group = groups.find((g) => g.id === groupId);
+    if (!group) return;
+    setSelections((prev) => {
+      const cur = prev[groupId] || [];
+      const on = cur.includes(optionId);
+      let next = cur;
+      if (on) {
+        if (cur.length <= (group.min_select || 0)) return prev;
+        next = cur.filter((id) => id !== optionId);
+      } else if (group.max_select === 1) {
+        next = [optionId];
+      } else if (cur.length < group.max_select) {
+        next = [...cur, optionId];
+      }
+      return { ...prev, [groupId]: next };
+    });
+  };
+
+  const decreaseQuantity = () => {
+    setQuantity((q) => Math.max(1, q - 1));
+  };
+
+  const increaseQuantity = () => {
+    setQuantity((q) => q + 1);
+  };
+
+  const handleAdd = () => {
+    if (missingRequired) return;
+    onAdd(
+      item,
+      selectedVariation,
+      selectionPayload.filter((s) => s.option_ids.length > 0),
+      quantity,
+    );
+    onClose();
+  };
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-0 sm:items-center sm:px-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={{ duration: 0.22 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative max-h-[92vh] w-full max-w-lg overflow-hidden rounded-t-2xl bg-[var(--color-washi)] shadow-2xl sm:rounded-2xl"
+      >
+        <div className="max-h-[92vh] overflow-y-auto pb-24">
+          {/* Header Image */}
+          <div className="relative h-52 bg-[#e8f5e9] sm:h-64">
+            <img
+              src={item.image_url || DEFAULT_FOOD_IMAGE}
+              alt={translateItemName(item.name, i18n.language)}
+              className="h-full w-full object-cover"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = DEFAULT_FOOD_IMAGE;
+              }}
+            />
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-sumi)]/80 text-[var(--color-washi)] text-lg leading-none hover:bg-[var(--color-sumi)] transition-colors cursor-pointer"
+              aria-label={t("common.close")}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Item Info */}
+          <div className="px-5 pt-5 sm:px-7">
+            <h2 className="font-serif text-2xl font-bold text-[var(--color-sumi)]">
+              {translateItemName(item.name, i18n.language)}
+            </h2>
+            <div className="mt-2 flex items-center gap-2.5">
+              <span className="text-sm font-semibold text-[var(--color-sumi)]/70">
+                €{selectedVariation.price.toFixed(2)}
+              </span>
+              {item.tags?.map((tag) => (
+                <span key={tag} className="rounded-full border border-[var(--color-shu)]/30 bg-[var(--color-shu)]/5 px-2.5 py-0.5 text-[11px] font-semibold text-[var(--color-shu)]">
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <p className="mt-3 text-sm leading-6 text-[var(--color-sumi)]/55">
+              {item.description}
+            </p>
+          </div>
+
+          {/* Variations (size picker) */}
+          {variations.length > 1 && (
+            <div className="mx-5 mt-5 border-t border-[var(--color-sumi)]/8 pt-5 sm:mx-7">
+              <h3 className="text-sm font-bold text-[var(--color-sumi)]">
+                {t("order.customization.aLargerDose")}
+              </h3>
+              <div className="mt-3 space-y-1">
+                {variations.map((v) => {
+                  const on = selectedVariation.id === v.id;
+                  return (
+                    <label key={v.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-1 py-3 hover:bg-[var(--color-sumi)]/[0.03] transition-colors">
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${on ? "border-[var(--color-shu)] bg-[var(--color-shu)]" : "border-[var(--color-sumi)]/25"}`}>
+                        {on && <span className="h-2 w-2 rounded-full bg-white" />}
+                      </span>
+                      <span className="flex-1 text-sm text-[var(--color-sumi)]">{v.label}</span>
+                      {v.price > variations[0].price && (
+                        <span className="text-sm text-[var(--color-sumi)]/55">+€{(v.price - variations[0].price).toFixed(2)}</span>
+                      )}
+                      <input type="radio" name="variation" value={v.id} checked={on} onChange={() => setSelectedVariationId(v.id)} className="sr-only" />
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Customization Groups */}
+          <div className="mt-2">
+            {groups.map((group) => {
+              const selectedIds = selections[group.id] || [];
+              const isSingle = group.max_select === 1;
+              const isReq = (group.min_select || 0) > 0;
+              const hasDefaultSelection = isReq && selectedIds.length >= (group.min_select || 0);
+              const hideChoiceHelper = isSingle && hasDefaultSelection;
+              const translatedTitle = translateCustomizationText(group.title, i18n.language);
+              return (
+                <div key={group.id} className="mx-5 border-t border-[var(--color-sumi)]/8 pt-5 pb-2 sm:mx-7">
+                  <div className="mb-1 flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--color-sumi)]">{translatedTitle}</h3>
+                      {!hideChoiceHelper && (
+                        <p className="mt-0.5 text-xs text-[var(--color-sumi)]/45">
+                          {t("order.customization.chooseUpTo", { count: group.max_select })}
+                        </p>
+                      )}
+                      {(group.free_select_count || 0) > 0 && (
+                        <p className="mt-0.5 text-xs font-semibold text-[var(--color-shu)]">
+                          {t("order.customization.firstNFree", { count: group.free_select_count })}
+                        </p>
+                      )}
+                      {!isSingle && selectedIds.length >= group.max_select && (
+                        <p className="mt-1 text-xs font-semibold text-[var(--color-shu)]">
+                          {t("order.customization.maxReached", { count: group.max_select })}
+                        </p>
+                      )}
+                    </div>
+                    {isReq && !hasDefaultSelection && (
+                      <span className="mt-0.5 shrink-0 text-[10px] font-bold uppercase tracking-wide bg-[var(--color-shu)]/10 text-[var(--color-shu)] px-2.5 py-0.5 rounded">
+                        {t("order.customization.required")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-3 space-y-0.5">
+                    {group.options.map((opt) => {
+                      const on = selectedIds.includes(opt.id);
+                      const isMaxed = !isSingle && !on && selectedIds.length >= group.max_select;
+                      const idx = selectedIds.indexOf(opt.id);
+                      const isFree = on && idx < (group.free_select_count || 0);
+                      const translatedLabel = translateCustomizationText(opt.label, i18n.language);
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => toggleOption(group.id, opt.id)}
+                          disabled={isMaxed}
+                          aria-pressed={on}
+                          className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-1 py-3 text-left transition-colors hover:bg-[var(--color-sumi)]/[0.03] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
+                        >
+                          {isSingle ? (
+                            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${on ? "border-[var(--color-shu)] bg-[var(--color-shu)]" : "border-[var(--color-sumi)]/25"}`}>
+                              <AnimatePresence initial={false}>
+                                {on && (
+                                  <motion.span
+                                    key="radio-dot"
+                                    initial={{ scale: 0.35, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.35, opacity: 0 }}
+                                    transition={{ duration: 0.14, ease: "easeOut" }}
+                                    className="h-2 w-2 rounded-full bg-white"
+                                  />
+                                )}
+                              </AnimatePresence>
+                            </span>
+                          ) : (
+                            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors ${on ? "bg-[var(--color-shu)] border-2 border-[var(--color-shu)]" : "border-2 border-[var(--color-sumi)]/25"}`}>
+                              <AnimatePresence initial={false}>
+                                {on && (
+                                  <motion.svg
+                                    key="checkbox-check"
+                                    initial={{ scale: 0.65, opacity: 0, rotate: -8 }}
+                                    animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                                    exit={{ scale: 0.65, opacity: 0, rotate: 8 }}
+                                    transition={{ duration: 0.14, ease: "easeOut" }}
+                                    className="h-3.5 w-3.5 text-white"
+                                    viewBox="0 0 14 14"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M2.5 7.5L5.5 10.5L11.5 3.5" />
+                                  </motion.svg>
+                                )}
+                              </AnimatePresence>
+                            </span>
+                          )}
+                          <span className="flex-1 text-sm text-[var(--color-sumi)]">{translatedLabel}</span>
+                          {opt.price > 0 && (
+                            <span className={`text-sm ${isFree ? "text-[var(--color-shu)] font-semibold" : "text-[var(--color-sumi)]/55"}`}>
+                              {isFree ? t("order.customization.freeTag") : `+€${opt.price.toFixed(2)}`}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Sticky Bottom Bar */}
+        <div className="absolute bottom-0 left-0 right-0 flex items-center gap-3 border-t border-[var(--color-sumi)]/10 bg-[var(--color-washi)] p-4 sm:px-7">
+          <div className="flex items-center gap-0 rounded-full bg-[var(--color-shu)] shrink-0">
+            <button
+              type="button"
+              onClick={decreaseQuantity}
+              disabled={quantity <= 1}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors hover:bg-[#a02020] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent cursor-pointer"
+              aria-label="Decrease quantity"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M3.5 8H12.5" /></svg>
+            </button>
+            <span className="relative block h-5 w-6 overflow-hidden text-center text-sm font-bold text-white tabular-nums">
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.span
+                  key={quantity}
+                  initial={{ y: 8, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -8, opacity: 0 }}
+                  transition={{ duration: 0.16, ease: "easeOut" }}
+                  className="absolute inset-0"
+                >
+                  {quantity}
+                </motion.span>
+              </AnimatePresence>
+            </span>
+            <button type="button" onClick={increaseQuantity} className="flex h-10 w-10 items-center justify-center rounded-full text-white hover:bg-[#a02020] transition-colors cursor-pointer" aria-label="Increase quantity">
+              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M8 3.5V12.5M3.5 8H12.5" /></svg>
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={Boolean(missingRequired)}
+            className="flex-1 rounded-full bg-[var(--color-shu)] py-3 text-center text-sm font-bold text-white transition-all hover:bg-[#a02020] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          >
+            {missingRequired
+              ? t("order.customization.pleaseChoose", { title: translateCustomizationText(missingRequired.title, i18n.language).toLowerCase() })
+              : `${t("order.addToOrder")}  €${totalPrice.toFixed(2)}`}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── OrderOnline Page ───────────────────────────────────────────────
 export function OrderOnline() {
   const { t } = useTranslation();
   const location = useLocation();
@@ -77,14 +495,22 @@ export function OrderOnline() {
   const [selectedVariationIds, setSelectedVariationIds] = useState<
     Record<string, string>
   >({});
+  const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const ITEMS_PER_PAGE = 10;
   const loaderRef = useRef<HTMLDivElement>(null);
 
-  const { addToCart, totalItems, totalPrice } = useCart();
+  const { cart, addToCart, totalItems, totalPrice } = useCart();
   const [addedItemIds, setAddedItemIds] = useState<Record<string, boolean>>({});
 
-  const handleAddToCart = (item: MenuItem, selectedVariation: any) => {
-    addToCart(item, selectedVariation);
+  const handleAddToCart = (
+    item: MenuItem,
+    selectedVariation: MenuItemVariation,
+    customizationSelections: MenuCustomizationSelection[] = [],
+    qty: number = 1,
+  ) => {
+    for (let i = 0; i < qty; i++) {
+      addToCart(item, selectedVariation, customizationSelections);
+    }
     setAddedItemIds((prev) => ({ ...prev, [item.id]: true }));
     setTimeout(() => {
       setAddedItemIds((prev) => ({ ...prev, [item.id]: false }));
@@ -209,6 +635,15 @@ export function OrderOnline() {
         description="Order fresh sushi, poke bowls, ramen, and wok dishes online for delivery or pickup from Sumi Sushi and Poke in Kaarina, Finland."
         canonicalPath="/order"
       />
+      <AnimatePresence>
+        {customizingItem && (
+          <CustomizationModal
+            item={customizingItem}
+            onClose={() => setCustomizingItem(null)}
+            onAdd={handleAddToCart}
+          />
+        )}
+      </AnimatePresence>
       {/* Decorative background elements */}
       <div
         className="fixed inset-0 opacity-[0.03] pointer-events-none z-0"
@@ -335,7 +770,7 @@ export function OrderOnline() {
 
           {/* Menu Grid */}
           {isLoadingMenu ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12 items-start">
               {Array.from({ length: MENU_SKELETON_COUNT }).map((_, index) => (
                 <MenuItemSkeleton key={index} />
               ))}
@@ -352,7 +787,7 @@ export function OrderOnline() {
           ) : (
             <motion.div
               layout
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12"
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12 items-start"
             >
               <AnimatePresence mode="popLayout">
                 {paginatedMenu.map((item, idx) => {
@@ -380,7 +815,7 @@ export function OrderOnline() {
                         {item.image_url ? (
                           <img
                             src={item.image_url}
-                            alt={item.name}
+                            alt={translateItemName(item.name)}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             referrerPolicy="no-referrer"
                             onError={(e) => {
@@ -390,7 +825,7 @@ export function OrderOnline() {
                         ) : (
                           <img
                             src={DEFAULT_FOOD_IMAGE}
-                            alt={item.name}
+                            alt={translateItemName(item.name)}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                           />
                         )}
@@ -423,15 +858,13 @@ export function OrderOnline() {
                         <div>
                           <div className="flex justify-between items-start mb-2 gap-4">
                             <h3 className="font-serif font-bold text-xl text-[var(--color-sumi)] group-hover:text-[var(--color-shu)] transition-colors">
-                              {item.name}
+                              {translateItemName(item.name)}
                             </h3>
                             <span className="font-medium text-[var(--color-sumi)]/80 whitespace-nowrap border-b border-[var(--color-sumi)]/10 pb-1">
                               {getMenuItemPriceRange(item)}
                             </span>
                           </div>
-                          <p className="text-sm text-[var(--color-sumi)]/60 line-clamp-2 leading-relaxed mb-4">
-                            {item.description}
-                          </p>
+                          <MenuDescription text={item.description} />
                         </div>
                         {variations.length > 1 && (
                           <div className="mb-4 grid grid-cols-2 gap-2">
@@ -462,18 +895,18 @@ export function OrderOnline() {
                           </div>
                         )}
                         <button
-                          onClick={() => handleAddToCart(item, selectedVariation)}
+                          onClick={() => hasMenuCustomizations(item) ? setCustomizingItem(item) : handleAddToCart(item, selectedVariation)}
                           className="self-start mt-auto text-xs tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors flex items-center gap-2 group/btn cursor-pointer min-h-6"
                         >
                           <AnimatePresence mode="wait">
-                            {addedItemIds[item.id] ? (
+                            {addedItemIds[item.id] || cart.some((c) => c.item.id === item.id) ? (
                               <motion.span
                                 key="added"
                                 initial={{ opacity: 0, y: 5 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -5 }}
                                 transition={{ duration: 0.15 }}
-                                className="text-green-600 font-bold flex items-center gap-1.5"
+                                className="text-[var(--color-shu)] font-bold flex items-center gap-1.5"
                               >
                                 ✓ {t("order.added")}
                               </motion.span>

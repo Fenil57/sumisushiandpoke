@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import type { MenuItem, MenuItemVariation } from "../services/menuService";
-import { getDefaultMenuItemVariation } from "../services/menuService";
+import type {
+  MenuCustomizationSelection,
+  MenuItem,
+  MenuItemVariation,
+} from "../services/menuService";
+import {
+  calculateCustomizationPrice,
+  formatCustomizationSummary,
+  getDefaultMenuItemVariation,
+  getMenuItemVariations,
+  translateItemName,
+} from "../services/menuService";
 import { motion, AnimatePresence } from "motion/react";
 import { ShoppingBag, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -17,12 +27,18 @@ export interface CartItem {
   id: string;
   item: MenuItem;
   variation: MenuItemVariation;
+  customization_selections?: MenuCustomizationSelection[];
+  customization_summary?: string[];
   quantity: number;
 }
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (item: MenuItem, variation?: MenuItemVariation) => void;
+  addToCart: (
+    item: MenuItem,
+    variation?: MenuItemVariation,
+    customizationSelections?: MenuCustomizationSelection[],
+  ) => void;
   removeFromCart: (cartItemId: string) => void;
   removeOneFromCart: (cartItemId: string) => void;
   clearCart: () => void;
@@ -34,24 +50,61 @@ const CART_STORAGE_KEY = "sumi-cart-items";
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-function getCartItemId(item: MenuItem, variation: MenuItemVariation): string {
-  return `${item.id}::${variation.id}`;
+function getCustomizationKey(selections: MenuCustomizationSelection[] = []): string {
+  return selections
+    .map((selection) => `${selection.group_id}:${selection.option_ids.join(",")}`)
+    .join("|");
+}
+
+function getPricedVariation(
+  item: MenuItem,
+  variation: MenuItemVariation,
+  selections: MenuCustomizationSelection[] = [],
+): MenuItemVariation {
+  const customizationPrice = calculateCustomizationPrice(item, selections);
+  return {
+    ...variation,
+    price: variation.price + customizationPrice,
+  };
+}
+
+function getCartItemId(
+  item: MenuItem,
+  variation: MenuItemVariation,
+  selections: MenuCustomizationSelection[] = [],
+): string {
+  const customizationKey = getCustomizationKey(selections);
+  return `${item.id}::${variation.id}${customizationKey ? `::${customizationKey}` : ""}`;
 }
 
 function normalizeCartItem(cartItem: any): CartItem | null {
   if (!cartItem?.item?.id) return null;
   const variation =
-    cartItem.variation || getDefaultMenuItemVariation(cartItem.item);
+    getMenuItemVariations(cartItem.item).find(
+      (entry) => entry.id === cartItem.variation?.id,
+    ) || getDefaultMenuItemVariation(cartItem.item);
+  const customizationSelections = Array.isArray(cartItem.customization_selections)
+    ? cartItem.customization_selections
+    : [];
+  const pricedVariation = getPricedVariation(
+    cartItem.item,
+    variation,
+    customizationSelections,
+  );
   return {
     ...cartItem,
-    id: cartItem.id || getCartItemId(cartItem.item, variation),
-    variation,
+    id: cartItem.id || getCartItemId(cartItem.item, variation, customizationSelections),
+    variation: pricedVariation,
+    customization_selections: customizationSelections,
+    customization_summary:
+      cartItem.customization_summary ||
+      formatCustomizationSummary(cartItem.item, customizationSelections),
     quantity: Number(cartItem.quantity) || 1,
   };
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const stored = window.sessionStorage.getItem(CART_STORAGE_KEY);
@@ -85,9 +138,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }, 3000);
   };
 
-  const addToCart = (item: MenuItem, selectedVariation?: MenuItemVariation) => {
-    const variation = selectedVariation || getDefaultMenuItemVariation(item);
-    const cartItemId = getCartItemId(item, variation);
+  const addToCart = (
+    item: MenuItem,
+    variation?: MenuItemVariation,
+    customizationSelections: MenuCustomizationSelection[] = [],
+  ) => {
+    const baseVariation = variation || getDefaultMenuItemVariation(item);
+    const pricedVariation = getPricedVariation(item, baseVariation, customizationSelections);
+    const customizationSummary = formatCustomizationSummary(item, customizationSelections);
+    const cartItemId = getCartItemId(item, baseVariation, customizationSelections);
+
     setCart((prev) => {
       const existing = prev.find((i) => i.id === cartItemId);
       if (existing) {
@@ -95,16 +155,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           i.id === cartItemId ? { ...i, quantity: i.quantity + 1 } : i,
         );
       }
-      return [...prev, { id: cartItemId, item, variation, quantity: 1 }];
+      return [
+        ...prev,
+        {
+          id: cartItemId,
+          item,
+          variation: pricedVariation,
+          customization_selections: customizationSelections,
+          customization_summary: customizationSummary,
+          quantity: 1,
+        },
+      ];
     });
 
     const variationText =
-      variation.label !== "Regular" && variation.label !== "Normaali"
-        ? ` (${variation.label})`
+      pricedVariation.label !== "Regular" && pricedVariation.label !== "Normaali"
+        ? ` (${pricedVariation.label})`
         : "";
     addToast(
       t("order.addedToOrder"),
-      `${item.name}${variationText}`,
+      `${translateItemName(item.name, i18n.language)}${variationText}`,
       1,
       item.image_url,
     );

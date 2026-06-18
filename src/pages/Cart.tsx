@@ -21,7 +21,7 @@ import {
   SERVICE_TEMPORARILY_CLOSED,
   ServiceClosedPopup,
 } from "../components/ServiceClosed";
-import { DEFAULT_FOOD_IMAGE } from "../services/menuService";
+import { DEFAULT_FOOD_IMAGE, formatCustomizationSummary, translateItemName } from "../services/menuService";
 
 const RamenBowlIcon = ({
   className = "w-6 h-6",
@@ -46,6 +46,55 @@ const RamenBowlIcon = ({
     <path d="M16 10V7" />
   </svg>
 );
+
+const CART_DESCRIPTION_PREVIEW_LENGTH = 105;
+
+function getCartDescriptionPreview(text: string) {
+  const trimmedText = text.trim();
+
+  if (trimmedText.length <= CART_DESCRIPTION_PREVIEW_LENGTH) return trimmedText;
+
+  const preview = trimmedText.slice(0, CART_DESCRIPTION_PREVIEW_LENGTH).trim();
+  const lastSpaceIndex = preview.lastIndexOf(" ");
+
+  return lastSpaceIndex > 0 ? preview.slice(0, lastSpaceIndex) : preview;
+}
+
+function CartItemDescription({ text }: { text?: string }) {
+  const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const descriptionText = (text || "").trim();
+  const isTruncatable = descriptionText.length > CART_DESCRIPTION_PREVIEW_LENGTH;
+
+  if (!descriptionText) return null;
+
+  if (!isTruncatable || isExpanded) {
+    return (
+      <motion.p
+        layout
+        className="text-sm text-[var(--color-sumi)]/60 leading-6"
+      >
+        {descriptionText}
+      </motion.p>
+    );
+  }
+
+  return (
+    <motion.p
+      layout
+      className="text-sm text-[var(--color-sumi)]/60 leading-6"
+    >
+      <span>{getCartDescriptionPreview(descriptionText)}...</span>
+      <button
+        type="button"
+        onClick={() => setIsExpanded(true)}
+        className="ml-1.5 inline align-baseline font-bold text-[var(--color-shu)] hover:underline cursor-pointer"
+      >
+        {t("menu.readMore")}
+      </button>
+    </motion.p>
+  );
+}
 
 type CheckoutStep = "cart" | "customer-info";
 const DELIVERY_FEE_THRESHOLD = 20;
@@ -160,7 +209,7 @@ interface ManualOrderResponse {
 }
 
 export function Cart() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { settings, hasLiveSettings } = useSettings();
@@ -711,7 +760,7 @@ export function Cart() {
             ) : (
               <div className="divide-y divide-[var(--color-sumi)]/10">
                 <AnimatePresence mode="popLayout">
-                  {cart.map(({ id, item, variation, quantity }) => (
+                  {cart.map(({ id, item, variation, quantity, customization_selections }) => (
                     <motion.div
                       layout
                       initial={{ opacity: 0, x: -20 }}
@@ -724,7 +773,7 @@ export function Cart() {
                         {item.image_url ? (
                           <img
                             src={item.image_url}
-                            alt={item.name}
+                            alt={translateItemName(item.name, i18n.language)}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = DEFAULT_FOOD_IMAGE;
@@ -733,7 +782,7 @@ export function Cart() {
                         ) : (
                           <img
                             src={DEFAULT_FOOD_IMAGE}
-                            alt={item.name}
+                            alt={translateItemName(item.name, i18n.language)}
                             className="w-full h-full object-cover"
                           />
                         )}
@@ -742,14 +791,24 @@ export function Cart() {
                         <div className="flex justify-between items-start gap-4">
                           <div>
                             <h3 className="font-serif font-bold text-xl text-[var(--color-sumi)]">
-                              {item.name}
+                              {translateItemName(item.name, i18n.language)}
                             </h3>
-                            <p className="text-xs text-[var(--color-shu)] uppercase tracking-[0.15em] font-bold mt-1">
+                            <p className="text-xs text-[var(--color-shu)] uppercase tracking-[0.15em] font-bold mt-1 mb-1">
                               {variation.label}
                             </p>
-                            <p className="text-sm text-[var(--color-sumi)]/60 line-clamp-1">
-                              {item.description}
-                            </p>
+                            <CartItemDescription text={item.description} />
+                            {customization_selections && customization_selections.length > 0 && (
+                              <div className="mt-2 space-y-0.5">
+                                {formatCustomizationSummary(item, customization_selections, i18n.language).map((line) => (
+                                  <p
+                                    key={line}
+                                    className="text-xs text-[var(--color-sumi)]/45 leading-5"
+                                  >
+                                    {line}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <span className="font-medium text-[var(--color-sumi)]/80">
                             €{(variation.price * quantity).toFixed(2)}
@@ -767,7 +826,7 @@ export function Cart() {
                               {quantity}
                             </span>
                             <button
-                              onClick={() => addToCart(item, variation)}
+                              onClick={() => addToCart(item, variation, customization_selections || [])}
                               className="w-8 h-8 rounded-full border border-[var(--color-sumi)]/20 flex items-center justify-center text-[var(--color-sumi)] hover:bg-[var(--color-shu)] hover:border-[var(--color-shu)] hover:text-[var(--color-washi)] transition-colors"
                             >
                               <Plus size={16} />

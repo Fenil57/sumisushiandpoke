@@ -13,6 +13,8 @@ import {
   toggleMenuItemAvailability,
   type MenuItem,
   type MenuItemVariation,
+  type MenuCustomizationGroup,
+  type MenuCustomizationOption,
   DEFAULT_FOOD_IMAGE,
 } from '../services/menuService';
 import { uploadMenuItemImage } from '../services/imageUploadService';
@@ -48,6 +50,13 @@ function getEditableVariations(item: MenuItem): MenuItemVariation[] {
   return item.variations && item.variations.length > 0
     ? item.variations
     : [{ id: 'regular', label: 'Regular', price: item.price || 0 }];
+}
+
+const makeGroupId = () => `group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+const makeOptionId = () => `opt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+
+function getEditableCustomizationGroups(item: MenuItem): MenuCustomizationGroup[] {
+  return item.customization_groups || [];
 }
 
 export function AdminMenuManager() {
@@ -185,6 +194,25 @@ export function AdminMenuManager() {
       return;
     }
 
+    const normalizedCustomizationGroups = getEditableCustomizationGroups(editItem)
+      .filter((group) => group.title.trim())
+      .map((group) => ({
+        ...group,
+        title: group.title.trim(),
+        min_select: Math.max(0, parseInt(String(group.min_select)) || 0),
+        max_select: Math.max(1, parseInt(String(group.max_select)) || 1),
+        free_select_count: Math.max(0, parseInt(String(group.free_select_count)) || 0),
+        options: (group.options || [])
+          .filter((option) => option.label.trim())
+          .map((option) => ({
+            ...option,
+            label: option.label.trim(),
+            price: typeof option.price === 'number' && !Number.isNaN(option.price) ? option.price : 0,
+            is_available: option.is_available !== false,
+          })),
+      }))
+      .filter((group) => group.options.length > 0);
+
     setIsSaving(true);
     try {
       const itemId = modalMode === 'create' ? generateId(editItem.name) : editItem.id;
@@ -202,6 +230,7 @@ export function AdminMenuManager() {
         ...editItem,
         image_url: imageUrl,
         variations: normalizedVariations,
+        customization_groups: normalizedCustomizationGroups,
         price: normalizedVariations[0].price,
         id: itemId,
       };
@@ -290,6 +319,109 @@ export function AdminMenuManager() {
         variations: nextVariations.length > 0 ? nextVariations : [{ id: makeVariationId(), label: 'Regular', price: prev.price || 0 }],
       };
     });
+  };
+
+  const handleAddCustomizationGroup = () => {
+    setEditItem(prev => ({
+      ...prev,
+      customization_groups: [
+        ...getEditableCustomizationGroups(prev),
+        {
+          id: makeGroupId(),
+          title: '',
+          min_select: 0,
+          max_select: 1,
+          free_select_count: 0,
+          options: [],
+        },
+      ],
+    }));
+  };
+
+  const handleUpdateCustomizationGroup = (
+    groupId: string,
+    field: keyof Omit<MenuCustomizationGroup, 'id' | 'options'>,
+    value: string,
+  ) => {
+    setEditItem(prev => ({
+      ...prev,
+      customization_groups: getEditableCustomizationGroups(prev).map(group =>
+        group.id === groupId
+          ? {
+              ...group,
+              [field]: field === 'title' ? value : parseInt(value) || 0,
+            }
+          : group
+      ),
+    }));
+  };
+
+  const handleRemoveCustomizationGroup = (groupId: string) => {
+    setEditItem(prev => ({
+      ...prev,
+      customization_groups: getEditableCustomizationGroups(prev).filter(group => group.id !== groupId),
+    }));
+  };
+
+  const handleAddCustomizationOption = (groupId: string) => {
+    setEditItem(prev => ({
+      ...prev,
+      customization_groups: getEditableCustomizationGroups(prev).map(group =>
+        group.id === groupId
+          ? {
+              ...group,
+              options: [
+                ...(group.options || []),
+                { id: makeOptionId(), label: '', price: 0, is_available: true },
+              ],
+            }
+          : group
+      ),
+    }));
+  };
+
+  const handleUpdateCustomizationOption = (
+    groupId: string,
+    optionId: string,
+    field: keyof MenuCustomizationOption,
+    value: any,
+  ) => {
+    setEditItem(prev => ({
+      ...prev,
+      customization_groups: getEditableCustomizationGroups(prev).map(group =>
+        group.id === groupId
+          ? {
+              ...group,
+              options: (group.options || []).map(option =>
+                option.id === optionId
+                  ? {
+                      ...option,
+                      [field]: field === 'label'
+                        ? value
+                        : field === 'is_available'
+                        ? value
+                        : parseFloat(value) || 0,
+                    }
+                  : option
+              ),
+            }
+          : group
+      ),
+    }));
+  };
+
+  const handleRemoveCustomizationOption = (groupId: string, optionId: string) => {
+    setEditItem(prev => ({
+      ...prev,
+      customization_groups: getEditableCustomizationGroups(prev).map(group =>
+        group.id === groupId
+          ? {
+              ...group,
+              options: (group.options || []).filter(option => option.id !== optionId),
+            }
+          : group
+      ),
+    }));
   };
 
   // Filtering
@@ -891,6 +1023,164 @@ export function AdminMenuManager() {
                     >
                       Add
                     </button>
+                  </div>
+                </div>
+
+                {/* Customization Groups Section */}
+                <div className="border-t border-[var(--color-washi)]/10 pt-5">
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <label className="block text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--color-washi)]/40">
+                      Customization Groups
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddCustomizationGroup}
+                      className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-[var(--color-shu)] hover:text-[var(--color-washi)] transition-colors cursor-pointer"
+                    >
+                      <Plus size={12} /> Add Group
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {getEditableCustomizationGroups(editItem).map((group, groupIdx) => (
+                      <div
+                        key={group.id}
+                        className="bg-[var(--color-washi)]/[0.02] border border-[var(--color-washi)]/10 p-4 relative"
+                      >
+                        {/* Group Header */}
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <input
+                            type="text"
+                            value={group.title}
+                            onChange={(e) =>
+                              handleUpdateCustomizationGroup(group.id, 'title', e.target.value)
+                            }
+                            placeholder="Group Title (e.g. Choose protein, Valitse lisukkeet)"
+                            className="bg-transparent border-b border-[var(--color-washi)]/10 text-[var(--color-washi)] py-1 text-sm placeholder:text-[var(--color-washi)]/20 focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors font-medium flex-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCustomizationGroup(group.id)}
+                            className="p-1.5 text-[var(--color-washi)]/20 hover:text-red-400 hover:border-red-400/20 transition-colors cursor-pointer"
+                            title="Remove Group"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        {/* Selection Rules Grid */}
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                          <div>
+                            <label className="block text-[9px] tracking-wider uppercase text-[var(--color-washi)]/30 mb-1">
+                              Min Select
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={group.min_select || 0}
+                              onChange={(e) =>
+                                handleUpdateCustomizationGroup(group.id, 'min_select', e.target.value)
+                              }
+                              className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-2.5 py-1.5 text-xs focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] tracking-wider uppercase text-[var(--color-washi)]/30 mb-1">
+                              Max Select
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={group.max_select || 1}
+                              onChange={(e) =>
+                                handleUpdateCustomizationGroup(group.id, 'max_select', e.target.value)
+                              }
+                              className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-2.5 py-1.5 text-xs focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] tracking-wider uppercase text-[var(--color-washi)]/30 mb-1">
+                              Free Choices
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={group.free_select_count || 0}
+                              onChange={(e) =>
+                                handleUpdateCustomizationGroup(group.id, 'free_select_count', e.target.value)
+                              }
+                              className="w-full bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-2.5 py-1.5 text-xs focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Options List */}
+                        <div className="space-y-2 pl-3 border-l border-[var(--color-washi)]/10">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[9px] tracking-widest uppercase font-bold text-[var(--color-washi)]/35">
+                              Options & Ingredients
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleAddCustomizationOption(group.id)}
+                              className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-[var(--color-shu)] hover:text-[var(--color-washi)] transition-colors cursor-pointer"
+                            >
+                              <Plus size={10} /> Add Option
+                            </button>
+                          </div>
+
+                          {(group.options || []).map((option) => (
+                            <div key={option.id} className="grid grid-cols-[1fr_80px_36px_36px] gap-2 items-center">
+                              <input
+                                type="text"
+                                value={option.label}
+                                onChange={(e) =>
+                                  handleUpdateCustomizationOption(group.id, option.id, 'label', e.target.value)
+                                }
+                                placeholder="Option Label (e.g. Avocado)"
+                                className="min-w-0 bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-2.5 py-1.5 text-xs placeholder:text-[var(--color-washi)]/15 focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors"
+                              />
+                              <input
+                                type="number"
+                                step="0.10"
+                                min="0"
+                                value={option.price || 0}
+                                onChange={(e) =>
+                                  handleUpdateCustomizationOption(group.id, option.id, 'price', e.target.value)
+                                }
+                                placeholder="Price"
+                                className="bg-[var(--color-washi)]/[0.05] border border-[var(--color-washi)]/10 text-[var(--color-washi)] px-2.5 py-1.5 text-xs placeholder:text-[var(--color-washi)]/15 focus:outline-none focus:border-[var(--color-shu)]/50 transition-colors font-serif font-bold"
+                              />
+                              
+                              {/* Option Availability Toggle */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateCustomizationOption(group.id, option.id, 'is_available', option.is_available === false)
+                                }
+                                title={option.is_available !== false ? 'Active' : 'Disabled'}
+                                className={`flex h-7 items-center justify-center border transition-colors cursor-pointer ${
+                                  option.is_available !== false
+                                    ? 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5 hover:border-emerald-500/40'
+                                    : 'border-[var(--color-washi)]/10 text-[var(--color-washi)]/25 bg-[var(--color-washi)]/5 hover:border-amber-400/30 hover:text-amber-400'
+                                }`}
+                              >
+                                {option.is_available !== false ? <Eye size={12} /> : <EyeOff size={12} />}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCustomizationOption(group.id, option.id)}
+                                className="flex h-7 items-center justify-center border border-[var(--color-washi)]/10 text-[var(--color-washi)]/25 hover:text-red-400 hover:border-red-400/30 transition-colors cursor-pointer"
+                                title="Remove Option"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

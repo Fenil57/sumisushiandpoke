@@ -20,6 +20,7 @@ export interface OrderItem {
   menu_item_id: string;
   variation_id?: string;
   variation_label?: string;
+  customization_summary?: string[];
   name: string;
   price: number;
   quantity: number;

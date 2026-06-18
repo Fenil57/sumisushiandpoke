@@ -6,6 +6,7 @@ import {
   getDefaultMenuItemVariation,
   getMenuItemPriceRange,
   getMenuItems,
+  translateItemName,
   type MenuItem,
 } from "../services/menuService";
 import { useCart } from "../context/CartContext";
@@ -37,7 +38,7 @@ export function MenuScroll() {
     "loading",
   );
   const [addedItemId, setAddedItemId] = useState<string | null>(null);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { addToCart, cart } = useCart();
 
   const handleAddToCart = (e: React.MouseEvent, item: MenuItem) => {
@@ -154,7 +155,7 @@ export function MenuScroll() {
                   {item.image_url ? (
                     <img
                       src={item.image_url}
-                      alt={item.name}
+                      alt={translateItemName(item.name, i18n.language)}
                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110"
                       referrerPolicy="no-referrer"
                     />
@@ -188,7 +189,7 @@ export function MenuScroll() {
                             {String(idx + 1).padStart(2, "0")}
                           </div>
                           <h3 className="text-3xl md:text-5xl text-[#f9f6f0] font-serif font-bold mb-4">
-                            {item.name}
+                            {translateItemName(item.name, i18n.language)}
                           </h3>
                           <p className="text-[#f9f6f0]/80 text-sm max-w-md leading-relaxed mb-6 hidden md:block">
                             {item.description}
@@ -200,7 +201,7 @@ export function MenuScroll() {
                             </span>
                             <button
                               onClick={(e) => handleAddToCart(e, item)}
-                              aria-label={`Add ${item.name} to cart`}
+                              aria-label={`Add ${translateItemName(item.name, i18n.language)} to cart`}
                               className={`text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium transition-colors flex items-center gap-2 cursor-pointer ${isAdded || isInCart ? "text-[var(--color-shu)]" : "text-[#f9f6f0] hover:text-[#c92a2a]"}`}
                             >
                               <span
@@ -230,7 +231,7 @@ export function MenuScroll() {
                               {String(idx + 1).padStart(2, "0")}
                             </div>
                             <h3 className="text-xl md:text-2xl text-[#f9f6f0] font-serif font-bold md:[writing-mode:vertical-rl] md:rotate-180 whitespace-nowrap">
-                              {item.name}
+                              {translateItemName(item.name, i18n.language)}
                             </h3>
                           </div>
                         </motion.div>
