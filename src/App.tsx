@@ -19,6 +19,7 @@ import { Reservations } from "./pages/Reservations";
 import { ReservationManage } from "./pages/ReservationManage";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { TermsOfService } from "./pages/TermsOfService";
+import { JapaneseRitual } from "./pages/JapaneseRitual";
 import { Footer } from "./components/Footer";
 import { PageTransition } from "./components/PageTransition";
 import { CustomCursor } from "./components/CustomCursor";
@@ -96,6 +97,7 @@ function AnimatedRoutes() {
               </PageTransition>
             }
           />
+          <Route path="/ritual" element={<PageTransition><JapaneseRitual /></PageTransition>} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route
             path="/admin"
@@ -126,6 +128,7 @@ export default function App() {
 function AppContent() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const isRitualRoute = location.pathname === "/ritual";
 
   return (
     <>
@@ -139,12 +142,12 @@ function AppContent() {
       <div
         className={`min-h-screen font-sans ${isAdminRoute ? "bg-[var(--color-sumi)] text-[var(--color-washi)]" : "bg-[#fdfbf7] text-[#2c2825] selection:bg-[#d4a373] selection:text-white"} flex flex-col`}
       >
-        {!isAdminRoute && <ServiceClosedBanner />}
-        {!isAdminRoute && <Navbar />}
+        {!isAdminRoute && !isRitualRoute && <ServiceClosedBanner />}
+        {!isAdminRoute && !isRitualRoute && <Navbar />}
         <main id="main-content" className="flex-1" role="main">
           <AnimatedRoutes />
         </main>
-        {!isAdminRoute && <Footer />}
+        {!isAdminRoute && !isRitualRoute && <Footer />}
       </div>
     </>
   );

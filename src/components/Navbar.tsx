@@ -162,6 +162,12 @@ export function Navbar() {
               {t("restaurant.tag")}
             </Link>
             <Link
+              to="/ritual"
+              className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}
+            >
+              Ritual
+            </Link>
+            <Link
               to="/reservations"
               className={`text-xs tracking-[0.2em] uppercase font-medium transition-colors ${textColorClass} ${hoverTextColorClass}`}
             >
@@ -383,6 +389,13 @@ export function Navbar() {
                 className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors"
               >
                 {t("reservations.tag")}
+              </Link>
+              <Link
+                to="/ritual"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-xl tracking-[0.2em] uppercase font-medium text-[var(--color-sumi)] hover:text-[var(--color-shu)] transition-colors"
+              >
+                Ritual
               </Link>
               <Link
                 to="/order"
