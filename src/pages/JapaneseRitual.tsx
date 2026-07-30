@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ChevronLeft, ChevronRight, Volume2, VolumeX } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import { SEOHead } from "../components/SEOHead";
+import { playCurtainBrush, unlockCurtainAudio } from "../lib/curtainAudio";
 
 type RitualObject = {
   id: string;
@@ -108,7 +109,6 @@ function CharacterFringe({ object, onBrush, onActivate }: { object: RitualObject
     let imageWidth = 0;
     let imageHeight = 0;
     let lastLayoutKey = "";
-    let lastBrush = 0;
     let reveal = 0;
     let revealAt = performance.now() + 180;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -149,6 +149,19 @@ function CharacterFringe({ object, onBrush, onActivate }: { object: RitualObject
         }
       }
       return null;
+    };
+
+    const curtainAnchorY = (canvasX: number) => {
+      let closest: CurtainNode[] | null = null;
+      let closestDistance = Infinity;
+      for (const chain of columns) {
+        const distance = Math.abs(chain[0].homeX - canvasX);
+        if (distance < closestDistance) {
+          closest = chain;
+          closestDistance = distance;
+        }
+      }
+      return closestDistance <= columnGap * 1.5 ? closest?.[0].homeY ?? null : null;
     };
 
     const random = (seed: number) => {
@@ -293,10 +306,10 @@ function CharacterFringe({ object, onBrush, onActivate }: { object: RitualObject
       raf = window.requestAnimationFrame(animate);
     };
 
-    const onPointerMove = (event: PointerEvent) => {
+    const movePointer = (clientX: number, clientY: number) => {
       const rect = canvas.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
       const inside = x >= 0 && x <= width && y >= 0 && y <= height;
       if (!inside) {
         pointer.active = false;
@@ -308,10 +321,12 @@ function CharacterFringe({ object, onBrush, onActivate }: { object: RitualObject
       pointer.y = y;
       pointer.active = true;
       const speed = Math.hypot(pointer.vx, pointer.vy);
-      if (speed > 2.4 && performance.now() - lastBrush > 76 && y > (contourY(x) ?? height)) {
-        lastBrush = performance.now();
-        brushRef.current(Math.min(1, speed / 22));
-      }
+      if (speed > 2.4 && y > (curtainAnchorY(x) ?? height)) brushRef.current(Math.min(1, speed / 22));
+    };
+    const onPointerMove = (event: PointerEvent) => movePointer(event.clientX, event.clientY);
+    const onTouchMove = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (touch) movePointer(touch.clientX, touch.clientY);
     };
 
     const onImageReady = () => {
@@ -322,8 +337,14 @@ function CharacterFringe({ object, onBrush, onActivate }: { object: RitualObject
     };
     const image = getImage();
     if (image?.complete) onImageReady(); else image?.addEventListener("load", onImageReady, { once: true });
-    window.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerdown", onActivate);
+    const supportsPointerEvents = "PointerEvent" in window;
+    if (supportsPointerEvents) {
+      window.addEventListener("pointermove", onPointerMove, { passive: true });
+      canvas.addEventListener("pointerdown", onActivate, { passive: true });
+    } else {
+      window.addEventListener("touchmove", onTouchMove, { passive: true });
+      canvas.addEventListener("touchstart", onActivate, { passive: true });
+    }
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
     if (reducedMotion) {
@@ -335,8 +356,13 @@ function CharacterFringe({ object, onBrush, onActivate }: { object: RitualObject
 
     return () => {
       window.cancelAnimationFrame(raf);
-      window.removeEventListener("pointermove", onPointerMove);
-      canvas.removeEventListener("pointerdown", onActivate);
+      if (supportsPointerEvents) {
+        window.removeEventListener("pointermove", onPointerMove);
+        canvas.removeEventListener("pointerdown", onActivate);
+      } else {
+        window.removeEventListener("touchmove", onTouchMove);
+        canvas.removeEventListener("touchstart", onActivate);
+      }
       observer.disconnect();
     };
   }, [object, onActivate]);
@@ -359,39 +385,53 @@ const slideVariants = {
   }),
 };
 
+function RevealingText({ text, delay = 0 }: { text: string; delay?: number }) {
+  const words = text.split(/(\s+)/).filter(Boolean);
+  return (
+    <motion.span aria-label={text} className="block" initial="hidden" animate="visible" variants={{ hidden: {}, visible: { transition: { delayChildren: delay, staggerChildren: 0.027 } } }}>
+      {words.map((word, index) => (
+        <motion.span key={`${word}-${index}`} aria-hidden="true" className="inline-block" variants={{ hidden: { opacity: 0, clipPath: "inset(0 100% 0 0)" }, visible: { opacity: 1, clipPath: "inset(0 0% 0 0)" } }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}>
+          {word === " " ? "\u00a0" : word}
+        </motion.span>
+      ))}
+    </motion.span>
+  );
+}
+
+function RitualScene({ object, direction, onBrush, onActivate }: { key?: string; object: RitualObject; direction: number; onBrush: (intensity: number) => void; onActivate: () => void }) {
+  const isPresent = useIsPresent();
+
+  return (
+    <motion.div custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }} className="absolute inset-0">
+      {isPresent && <CharacterFringe object={object} onBrush={onBrush} onActivate={onActivate} />}
+      <motion.img data-ritual-object={object.id} src={object.image} alt={object.imageAlt} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }} className={`pointer-events-none absolute left-1/2 top-[11vh] md:top-[7vh] z-20 -translate-x-1/2 object-contain drop-shadow-[0_28px_35px_rgba(0,0,0,0.6)] ${object.imageClassName}`} />
+      <article className="absolute left-4 top-[27rem] z-30 max-w-[calc(100%-2rem)] border-l border-[#e7c772]/55 bg-[#070d17]/90 py-4 pl-4 pr-3 backdrop-blur-sm md:bottom-12 md:left-12 md:top-auto md:max-w-[20rem] md:bg-transparent md:py-0 md:pl-7 md:pr-0 md:backdrop-blur-none">
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[#e7c772]"><RevealingText text={[object.japaneseName, object.name].join(" · ")} delay={0.12} /></p>
+        <h1 className="mt-3 font-serif text-3xl leading-[0.95] tracking-tight text-[#f6eedf] md:text-5xl"><RevealingText text={object.title} delay={0.24} /></h1>
+        <p className="mt-4 text-sm leading-6 text-[#c9d0dc] md:text-base"><RevealingText text={object.phrase} delay={0.42} /></p>
+        <p className="mt-4 text-xs leading-5 text-[#8f9cb0]"><RevealingText text={object.description} delay={0.72} /></p>
+        <p className="mt-4 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-[#d9bf7b]"><RevealingText text={object.material} delay={1.06} /></p>
+        <a href={object.sourceUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block font-mono text-[0.62rem] uppercase tracking-[0.15em] text-[#afbad0] underline underline-offset-4 transition hover:text-white"><RevealingText text={object.sourceLabel} delay={1.22} /></a>
+      </article>
+    </motion.div>
+  );
+}
+
 export function JapaneseRitual() {
   const [selected, setSelected] = useState(0);
   const [showDetail, setShowDetail] = useState(true);
   const [slideDirection, setSlideDirection] = useState(1);
   const [soundOn, setSoundOn] = useState(false);
-  const audioRef = useRef<AudioContext | null>(null);
   const object = OBJECTS[selected];
 
   const playBrush = useCallback((intensity: number) => {
-    if (!soundOn) return;
-    if (!audioRef.current) {
-      const Context = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Context) return;
-      audioRef.current = new Context();
-    }
-    const audio = audioRef.current;
-    void audio.resume();
-    const now = audio.currentTime;
-    const gain = audio.createGain();
-    const oscillator = audio.createOscillator();
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(1480 + intensity * 620, now);
-    oscillator.frequency.exponentialRampToValueAtTime(1020, now + 0.28);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.018 + intensity * 0.055, now + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
-    oscillator.connect(gain);
-    gain.connect(audio.destination);
-    oscillator.start(now);
-    oscillator.stop(now + 0.36);
+    if (soundOn) playCurtainBrush(intensity);
   }, [soundOn]);
 
-  const activateSound = useCallback(() => setSoundOn(true), []);
+  const activateSound = useCallback(() => {
+    unlockCurtainAudio();
+    setSoundOn(true);
+  }, []);
 
   const changeObject = (index: number) => {
     setSlideDirection(index > selected || (selected === OBJECTS.length - 1 && index === 0) ? 1 : -1);
@@ -419,7 +459,7 @@ export function JapaneseRitual() {
             )}
           </div>
           <div className="flex items-center justify-self-end gap-3">
-            <button type="button" onClick={() => setSoundOn((enabled) => !enabled)} className="grid h-9 w-9 place-items-center border border-[#f5e7c7]/25 bg-[#06101d]/50 text-[#f5e7c7] transition hover:bg-[#f5e7c7]/15" aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}>
+            <button type="button" onClick={() => { unlockCurtainAudio(); setSoundOn((enabled) => !enabled); }} className="grid h-9 w-9 place-items-center border border-[#f5e7c7]/25 bg-[#06101d]/50 text-[#f5e7c7] transition hover:bg-[#f5e7c7]/15" aria-label={soundOn ? "Turn sound off" : "Turn sound on"} aria-pressed={soundOn} title={soundOn ? "Sound on" : "Sound off"}>
               {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />}
             </button>
           </div>
@@ -441,28 +481,14 @@ export function JapaneseRitual() {
           </section>
         ) : (
           <section className="relative h-[52rem] min-h-[52rem] md:h-[calc(100dvh-82px)] md:min-h-[39rem]" aria-label={`${object.name} interactive scene`}>
-            <AnimatePresence custom={slideDirection}>
-              <motion.div
+            <AnimatePresence custom={slideDirection} initial={false}>
+              <RitualScene
                 key={object.id}
-                custom={slideDirection}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute inset-0"
-              >
-                <CharacterFringe object={object} onBrush={playBrush} onActivate={activateSound} />
-                <motion.img data-ritual-object={object.id} src={object.image} alt={object.imageAlt} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }} className={`pointer-events-none absolute left-1/2 top-[11vh] md:top-[7vh] z-20 -translate-x-1/2 object-contain drop-shadow-[0_28px_35px_rgba(0,0,0,0.6)] ${object.imageClassName}`} />
-                <motion.article className="absolute left-4 top-[27rem] z-30 max-w-[calc(100%-2rem)] border-l border-[#e7c772]/55 bg-[#070d17]/90 py-4 pl-4 pr-3 backdrop-blur-sm md:bottom-12 md:left-12 md:top-auto md:max-w-[20rem] md:bg-transparent md:py-0 md:pl-7 md:pr-0 md:backdrop-blur-none" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.75, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}>
-                  <p className="font-mono text-[0.65rem] uppercase tracking-[0.28em] text-[#e7c772]">{object.japaneseName} · {object.name}</p>
-                  <h1 className="mt-3 font-serif text-3xl leading-[0.95] tracking-tight text-[#f6eedf] md:text-5xl">{object.title}</h1>
-                  <p className="mt-4 text-sm leading-6 text-[#c9d0dc] md:text-base">{object.phrase}</p>
-                  <p className="mt-4 text-xs leading-5 text-[#8f9cb0]">{object.description}</p>
-                  <p className="mt-4 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-[#d9bf7b]">{object.material}</p>
-                  <a href={object.sourceUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block font-mono text-[0.62rem] uppercase tracking-[0.15em] text-[#afbad0] underline underline-offset-4 transition hover:text-white">{object.sourceLabel}</a>
-                </motion.article>
-              </motion.div>
+                object={object}
+                direction={slideDirection}
+                onBrush={playBrush}
+                onActivate={activateSound}
+              />
             </AnimatePresence>
 
             <aside className="absolute right-4 top-6 z-30 flex items-center gap-2 md:bottom-12 md:right-12 md:top-auto md:gap-3" aria-label="Scene controls">
