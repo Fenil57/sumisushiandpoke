@@ -5,6 +5,7 @@ import { CustomCursor } from "../components/CustomCursor";
 import { Instagram, Phone, Mail } from "lucide-react";
 import { getSettings, SiteSettings, DEFAULT_SETTINGS } from "../services/settingsService";
 import maintenanceBg from "../images/maintenance-bg.png";
+import maintenanceBgMobile from "../images/maintenance-bg-mobile.png";
 import logoImage from "../assets/images/logo.png";
 
 export function Maintenance() {
@@ -46,12 +47,19 @@ export function Maintenance() {
       {/* Main Fullscreen Maintenance Canvas (16:9 aspect ratio optimized, Full HD responsive) */}
       <div className="relative min-h-screen w-full bg-[var(--color-sumi)] text-[var(--color-washi)] flex items-center justify-center overflow-hidden select-none font-sans cursor-default">
         
-        {/* Background Image */}
+        {/* Responsive Background Images */}
         <div className="absolute inset-0 z-0">
+          {/* Desktop Background (768px and up) */}
           <img
             src={maintenanceBg}
-            alt="Sumi Sushi Background"
-            className="w-full h-full object-cover object-center opacity-95 scale-100 transform transition-transform duration-1000 ease-out"
+            alt="Sumi Sushi Desktop Background"
+            className="hidden md:block w-full h-full object-cover object-center opacity-95 scale-100 transform transition-transform duration-1000 ease-out"
+          />
+          {/* Mobile Background (< 768px) */}
+          <img
+            src={maintenanceBgMobile}
+            alt="Sumi Sushi Mobile Background"
+            className="block md:hidden w-full h-full object-cover object-center opacity-95 scale-100 transform transition-transform duration-1000 ease-out"
           />
           
           {/* Soft vignette and moody lighting overlay */}
