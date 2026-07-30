@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useSettings } from "../hooks/useSettings";
 
 // Pre-extracted frame configuration
-const FRAME_COUNT = 60;
+const FRAME_COUNT = 90;
 const FRAME_PATH = "/frames/frame-";
 const FRAME_EXT = ".webp";
 
@@ -141,7 +141,11 @@ export function RamenHero() {
   }, [scrollYProgress, paintFrame]);
 
   return (
-    <section ref={containerRef} className="relative h-[300vh] bg-[#f9f6f0]" aria-label="Hero – The True Taste of Umami">
+    <section
+      ref={containerRef}
+      className="relative h-[300vh] bg-[#f9f6f0]"
+      aria-label="Hero – The True Taste of Umami"
+    >
       <div className="sticky top-0 h-[100dvh] overflow-hidden flex flex-col items-center pt-[15vh] px-4 md:px-8">
         {/* Hero Typography */}
         <motion.div
