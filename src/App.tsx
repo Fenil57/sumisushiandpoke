@@ -20,11 +20,13 @@ import { ReservationManage } from "./pages/ReservationManage";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { TermsOfService } from "./pages/TermsOfService";
 import { JapaneseRitual } from "./pages/JapaneseRitual";
+import { Maintenance } from "./pages/Maintenance";
 import { Footer } from "./components/Footer";
 import { PageTransition } from "./components/PageTransition";
 import { CustomCursor } from "./components/CustomCursor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ServiceClosedBanner } from "./components/ServiceClosed";
+import { MAINTENANCE_MODE } from "./config/maintenanceConfig";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -98,6 +100,7 @@ function AnimatedRoutes() {
             }
           />
           <Route path="/ritual" element={<PageTransition><JapaneseRitual /></PageTransition>} />
+          <Route path="/maintenance" element={<PageTransition><Maintenance /></PageTransition>} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route
             path="/admin"
@@ -114,6 +117,19 @@ function AnimatedRoutes() {
 }
 
 export default function App() {
+  // Global Maintenance Mode Guard:
+  // When MAINTENANCE_MODE is enabled, only the standalone Maintenance page is loaded.
+  // No application routes, contexts, API calls, navbar, or footer are executed.
+  // The current URL remains unchanged in the address bar.
+  if (MAINTENANCE_MODE) {
+    return (
+      <>
+        <CustomCursor />
+        <Maintenance />
+      </>
+    );
+  }
+
   return (
     <SettingsProvider>
       <CartProvider>
@@ -129,6 +145,9 @@ function AppContent() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isRitualRoute = location.pathname === "/ritual";
+  const isMaintenanceRoute = location.pathname === "/maintenance";
+
+  const hideHeaderFooter = isAdminRoute || isRitualRoute || isMaintenanceRoute;
 
   return (
     <>
@@ -140,14 +159,14 @@ function AppContent() {
         Skip to main content
       </a>
       <div
-        className={`min-h-screen font-sans ${isAdminRoute ? "bg-[var(--color-sumi)] text-[var(--color-washi)]" : "bg-[#fdfbf7] text-[#2c2825] selection:bg-[#d4a373] selection:text-white"} flex flex-col`}
+        className={`min-h-screen font-sans ${isAdminRoute || isMaintenanceRoute ? "bg-[var(--color-sumi)] text-[var(--color-washi)]" : "bg-[#fdfbf7] text-[#2c2825] selection:bg-[#d4a373] selection:text-white"} flex flex-col`}
       >
-        {!isAdminRoute && !isRitualRoute && <ServiceClosedBanner />}
-        {!isAdminRoute && !isRitualRoute && <Navbar />}
+        {!hideHeaderFooter && <ServiceClosedBanner />}
+        {!hideHeaderFooter && <Navbar />}
         <main id="main-content" className="flex-1" role="main">
           <AnimatedRoutes />
         </main>
-        {!isAdminRoute && !isRitualRoute && <Footer />}
+        {!hideHeaderFooter && <Footer />}
       </div>
     </>
   );

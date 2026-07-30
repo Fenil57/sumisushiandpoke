@@ -2745,10 +2745,24 @@ app.use(express.static(distPath));
 
 // Catch-all route to serve the React app for any other request (SPA routing)
 app.get('*', (req, res, next) => {
-  // If the request starts with /api, let it fall through or return 404
+  const isServerMaintenance =
+    process.env.MAINTENANCE_MODE === 'true' ||
+    process.env.VITE_MAINTENANCE_MODE === 'true';
+
+  // If the request starts with /api
   if (req.path.startsWith('/api')) {
+    if (isServerMaintenance && req.path !== '/api/health') {
+      res.setHeader('Retry-After', '3600');
+      return res.status(503).json({ error: 'Service temporarily unavailable due to scheduled maintenance.' });
+    }
     return next();
   }
+
+  if (isServerMaintenance) {
+    res.setHeader('Retry-After', '3600');
+    res.status(503);
+  }
+
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
